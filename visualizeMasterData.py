@@ -1,5 +1,6 @@
 import pandas as pd
 import numpy as np
+from scipy.interpolate import griddata
 from matplotlib import pyplot as plt
 path_to_database = 'D:\\Project\\Dissertation\\Master\\'
 
@@ -73,6 +74,46 @@ def plot_fp_per_ap(rss_dB, rp_m, ap):
     plt.draw()
     return
 
+def plot_rss(rp_m, rss_dB, ap, pltype='plot3'):
+# Plot surface, contour, etc. of RSS values for an access point.
+# Plot signal strength values of given AP over given metric cartesian
+# coordinate system.
+    
+    fig = plt.figure()
+    X, Y = np.meshgrid(rp_m[0,:,0], rp_m[0,:,1],indexing='ij')
+    ZI = griddata((rp_m[0,:,0], rp_m[0,:,1]), rss_dB[:,ap], (X, Y))
+    if pltype == 'plot3':
+        ax = fig.add_subplot(111, projection='3d')
+        p = ax.scatter(rp_m[0,:,0],rp_m[0,:,1], rss_dB[:,ap], c='k', marker='o')
+    elif pltype == 'contour':
+        ax = fig.add_subplot(111)
+        c = ax.contour(X, Y, ZI, cmap='jet')
+        fig.colorbar(c, ax=ax)
+    elif pltype == 'contour3':
+        ax = fig.add_subplot(111, projection='3d')
+        c = ax.contour(X, Y, ZI, cmap='jet')
+        fig.colorbar(c, ax=ax)
+        ax.set_zlabel('RSS (dB)')
+#    elif pltype == 'contourf': # requires too much mem
+#        ax = fig.add_subplot(111, projection='3d')
+#        c = ax.contourf(X, Y, ZI, cmap='jet')
+#        fig.colorbar(c, ax=ax)
+#        ax.set_zlabel('RSS (dB)')
+#    elif pltype == 'surf':
+#        ax = fig.add_subplot(111, projection='3d')
+#        c = ax.plot_surface(X, Y, ZI, cmap='jet')
+#        fig.colorbar(c, ax=ax)
+#        ax.set_zlabel('RSS (dB)')
+    else:
+        print('Unknown plot type')
+
+    ax.set_xlabel('easting (m)')
+    ax.set_ylabel('northing (m)')
+    ax.set_title('RSS of access point ' + repr(ap+1) + ' on the selected floor')
+
+    plt.draw()
+    return
+
 
 #Load Data
 data = load_data(path_to_database)
@@ -88,6 +129,17 @@ rp_m = get_geo_cord(data)
 plot_stats(rss_dB)
 plot_rp(rp_m)
 plot_rp_grid(rp_m)
-selAp =  0x0001;
+selAp =  0x0004-1;
 plot_fp_per_ap(rss_dB,rp_m,selAp)
+
+
+rp_m1 = rp_m.to_numpy()   
+rss_dB1 = rss_dB.to_numpy()
+hgt = np.unique(rp_m1[:,2])
+#select the floor number for visualization; in this example it is 2
+floor = 0; # choose between 0:4
+idxRpFlX = np.where(rp_m1[:,2] == hgt[floor])
+# num. of valid FP must be high
+plot_rss(rp_m1[idxRpFlX, 0:2], rss_dB1[idxRpFlX], selAp, 'plot3')
+
 plt.show()
