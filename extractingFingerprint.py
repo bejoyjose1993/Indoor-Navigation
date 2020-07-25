@@ -10,7 +10,16 @@ from matplotlib.cbook import flatten
 import os
 import psycopg2
 import errno
+import mysql.connector
 # enter path to directory where data is stored
+
+#Connect DB using mysql.connector
+mydb = mysql.connector.connect(
+    host = "localhost",
+    user = "root",
+    password = "root",
+    database = "indoor_navigation"
+)
 
 def load_data(path_to_data, f_name):
 
@@ -23,7 +32,7 @@ def load_data(path_to_data, f_name):
     #X[X==100] = np.nan
     return (data)
 
-def format_data(data,cord,file):
+def format_data(data,cord,rp,p_dir,file):
     #Empty data Frame
     initdata =[]
     columns = ['date','time','0x0001','0x0002', '0x0003','0x0004','0x0005', '0x0006','0x0012','0x0013', '0x0014','0x0015','0x0016']
@@ -70,6 +79,8 @@ def format_data(data,cord,file):
         dataf.insert(loc=1, column='y_axis', value=cord[1])
         dataf.insert(loc=2, column='z_axis', value= 0)
         dataf.insert(loc=3, column='orientation', value=orientation)
+        dataf.insert(loc=4, column='reference_points', value=rp)
+        dataf.insert(loc=5, column='Messurement_points', value=p_dir)
         #print(dataf)
         #print(dataf.info()) 
         dataframe1 = pd.concat([dataframe1,dataf])
@@ -97,11 +108,12 @@ def get_data():
             p_set_dir = rp_set_dir + p_dir + "\\"
             rt, P_dir, files = os.walk(p_set_dir).__next__()
             cord = get_geo_cord(rp,p_dir)
+            #print(cord)
             print("Cordinates for Reference Point: " +rp + "and messurement point: "+ p_dir+"is x_axis: "+str(cord[0])+"is y_axis: "+str(cord[1]))
             for f_name in files:
                 rss_dB = load_data(p_set_dir,f_name)
                 data =  pd.DataFrame(rss_dB)
-                my_data = format_data(data,cord,f_name)
+                my_data = format_data(data,cord,rp,p_dir,f_name)
                 #my_data = format_data(data,rp,P_dir,files)
                 export_file_path = 'D:\\Project\\Dissertation\\Data Set\\Formated_Dataset\\' + rp +'\\' + p_dir + '\\' + f_name 
                 if not os.path.exists(os.path.dirname(export_file_path)):
@@ -131,23 +143,25 @@ def get_data():
 
 def get_geo_cord(rp, p_dir):
     cord = list()
-    con = psycopg2.connect(
-    host= "localhost",
-    database="indoor_nav_db",
-    user="postgres",
-    password="bejoy1993",
-    port= 5432)
+    #con = psycopg2.connect(
+    #host= "localhost",
+    #database="indoor_nav_db",
+    #user="postgres",
+    #password="bejoy1993",
+    #port= 5432)
 
     #cursor
-    cur = con.cursor()
-    cur.execute("select x_axis, y_axis from geo_loc_cord where ref_point = '"+ rp + "' and mess_point = '"+ p_dir +"'")
-    rows = cur.fetchall()
+    #cur = con.cursor()
+    my_cusor = mydb.cursor()
+    my_cusor.execute("select x_axis, y_axis from geo_location_cord where ref_point = '"+ rp + "' and mess_point = '"+ p_dir +"'")
+    rows = my_cusor.fetchall()
+    #print(rows)
     for r in rows:
         cord = [r[0],r[1]]
 
     #Close
-    cur.close()    
-    con.close()
+    my_cusor.close()    
+    #con.close()
     return cord
 
 
@@ -159,6 +173,7 @@ def compute_RSSI(raw_data):
     
 
 get_data()
+mydb.close()
 #path_to_database = 'D:\\Project\\Project Dataset\\RP-1\\P-1\\'       
 #rss_dB = load_data(path_to_database, "West 0.csv")
 #data =  pd.DataFrame(rss_dB)

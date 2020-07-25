@@ -1,7 +1,7 @@
 from gtts import gTTS 
 import os 
-audio_file = 'D:\\Project\\Dissertation\\Audio\\Welcome.mp3'
-mytext = 'Welcome to RSS Navigation App!'
+audio_file = 'D:\\Project\\Dissertation\\Audio\\init_position.mp3'
+mytext = 'Calculating Initial User Position!'
   
 # Language in which you want to convert 
 language = 'en'
