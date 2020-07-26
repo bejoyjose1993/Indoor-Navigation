@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 import numpy as np
 from matplotlib import style
+import matplotlib.image as mpimg
 import os
 import mysql.connector
 from sklearn.preprocessing import StandardScaler
@@ -242,18 +243,20 @@ def get_nav_ref_points(cur_block, dest_block):
     for r in rows:
         X =r[0]
 
-    dest_stmt = "SELECT ref_point FROM indoor_navigation.geo_location_cord where block = %(dest_block)s"
+    dest_stmt = "SELECT ref_point,x_axis, y_axis FROM indoor_navigation.geo_location_cord where block = %(dest_block)s"
     dest_cusor.execute(dest_stmt,{ 'dest_block': dest_block})
     rows = dest_cusor.fetchall()
     for r in rows:
         Y =r[0]
+        loc = [r[1],r[2]]
     my_cusor.close()
     dest_cusor.close()
-    return (X,Y)
+    return (X,Y,loc)
 
 def get_direction(cur_rp, dest_block,path, distance_audio):
     print(path)
     next_rp = ""
+    direction = "Destination"
     if(len(path) > 1):
         next_rp = path[path.index(cur_rp)+1]
 
@@ -274,52 +277,38 @@ def get_direction(cur_rp, dest_block,path, distance_audio):
         print(distance_text)
     else:
         my_cusor = mydb.cursor()
-        select_stmt = "SELECT direction_comment FROM indoor_navigation.edge_direction_graph where from_edge = %(cur_rp)s and to_edge =  %(next_rp)s"
+        select_stmt = "SELECT direction_comment,direction FROM indoor_navigation.edge_direction_graph where from_edge = %(cur_rp)s and to_edge =  %(next_rp)s"
         my_cusor.execute(select_stmt,{ 'cur_rp': cur_rp , 'next_rp' : next_rp})
         rows = my_cusor.fetchall()
         for r in rows:
             distance_text =r[0]
+            direction = r[1]
         my_cusor.close()
         #distance_text = 'Your Have Reached Your Destination'
         text_to_speach(distance_text,distance_audio)
         print(distance_text)
+    return  direction       
         
 
-
+# Load Data
 data  = load_data(data_set_dir)
 df = get_req_data(data)
-#print(df.head())
-
-
-
-#scaler = StandardScaler()
-#scaler.fit(df.drop('Messurement_points',axis=1))
-#scaled_features = scaler.transform(df.drop('Messurement_points',axis=1))
-#df_feat = pd.DataFrame(scaled_features,columns=df.columns[:-1])
-#print(df_feat.head())
-
-
+# KNN Training
 X_train = df.drop(['reference_points','Messurement_points'],axis=1)
-#X_train = scaled_features
 X_train = X_train.fillna(0)
 y_train = df[['reference_points','Messurement_points']]
-#X_train, X_test, y_train, y_test = train_test_split(scaled_features,df['TARGET CLASS'],
-#                test_size=0.01)
-
-
 knn = KNeighborsClassifier(n_neighbors=1)
 knn.fit(X_train,y_train)
-
 KNeighborsClassifier(algorithm='auto', leaf_size=30, metric='minkowski',
            metric_params=None, n_jobs=1, n_neighbors=1, p=2,
            weights='uniform')
 
 init_pred = initial_localization(initial_test_dir, initial_loc_audio)
 init_block = compute_init_block(init_pred)
-print(init_block)
+#print(init_block)
 block_text = 'User is located near block!' + init_block[0] +'and' + init_block[1]
 text_to_speach(block_text,init_block_audio)
-print(block_text)
+#print(block_text)
 dest_block = input_destination()
 
 
@@ -327,71 +316,45 @@ graph = Graph()
 edges = get_graph_edge()
 for edge in edges:
     graph.add_edge(*edge)
-X, Y = get_nav_ref_points(init_block, dest_block)
+X, Y , loc= get_nav_ref_points(init_block, dest_block)
 path, distance = dijsktra(graph, X, Y)
-distance_text = 'Your Location is ' + str(distance) +'meeters away'
+distance_text = 'Your Location is approximately' + str(distance) +'meeters away'
 text_to_speach(distance_text,distance_audio)
-print(distance_text)
-
-
-#plt.figure()    
+#print(distance_text)
+ 
 fig = plt.figure()
-ax1 = fig.add_subplot(1,1,1)
-line = plt.Line2D((0, 0), (0, 42.1), lw=2.5)
-line1 = plt.Line2D((0, 16.35), (42.1, 53.65), lw=2.5)
-line2 = plt.Line2D((16.35, 33.15), (53.65, -4.90), lw=2.5)
-line3 = plt.Line2D((33.15, 12), (-4.90, -4.90), lw=2.5)
-line4 = plt.Line2D((12, 12), (-4.90, 0), lw=2.5, ls='-' )
-line5 = plt.Line2D((12, 0), (0, 0), lw=2.5)
-line6 = plt.Line2D((13.35, 30.15), (52, -4.90), lw=2.5, ls=':' )
-line7 = plt.Line2D((3,3), (0, 42.1), lw=2.5, ls=':' )
-line8 = plt.Line2D((10.85,10.85), (0, 39), lw=2.5, ls=':' )
-line9 = plt.Line2D((10.85,19.3), (39, 0), lw=2.5, ls=':' )
-line10 = plt.Line2D((19.3,12), (0, 0), lw=2.5, ls=':' )
-plt.gca().add_line(line)
-plt.gca().add_line(line1)
-plt.gca().add_line(line2)
-plt.gca().add_line(line3)
-plt.gca().add_line(line4)
-plt.gca().add_line(line5)
-plt.gca().add_line(line6)
-plt.gca().add_line(line7)
-plt.gca().add_line(line8)
-plt.gca().add_line(line9)
-plt.gca().add_line(line10)
+#ax1 = fig.add_subplot(1,1,1)
 
-#plt.axis([0, 16, 0, 16])     
-plt.grid(False)                         # set the grid
+img = mpimg.imread("D:\\Project\\Dissertation\\floor_plan_samp.png")
+print(img)
+plt.imshow(img, extent=[36.15,0,-4.90,51.32])
+ax=plt.gca()  
+ax.yaxis.tick_right()        
+plt.grid(False)  
+xlabel = "DEST"
+plt.scatter(loc[0],loc[1], marker="o",c="RED")
 
-
-ax=plt.gca()                            # get the axis
-ax.xaxis.set_ticks(np.arange(0, 55, 5))
-ax.set_xlim(ax.get_xlim()[::-1])        # invert the axis
-#ax.yaxis.tick_left()                     # and move the X-Axis      
-ax.yaxis.set_ticks(np.arange(-10, 60, 5)) # set y-ticks
-ax.yaxis.tick_right()   
-
+plt.xlabel("East - Direction", fontdict=None, labelpad=None)
+plt.ylabel("South - Direction", fontdict=None, labelpad=None)
+plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left', borderaxespad=0.)
 
 def animate(i):
 
-    
+    from random import random
 #    data  = load_data(test_set_dir)
     data  = load_test_data(test_raw_dir)
     
+
     my_data = format_data(data)
-    #df_test = get_req_data(my_data)
-    #x_test = df_test.drop(['reference_points', 'Messurement_points'],axis=1)
     x_test = get_req_test_data(my_data)
     x_test = x_test.fillna(0)
     test_mean = x_test.mean(axis = 0).to_frame().transpose()
 
-    #y_test = df_test[['reference_points','Messurement_points']].drop_duplicates()
-    #mess_point = y_test[['reference_points','Messurement_points']]
     pred = knn.predict(test_mean)
     X = pred[0][0]
     Y = get_block_ref_point(dest_block)
     new_path, distance = dijsktra(graph, X, Y)
-    get_direction(pred[0][0], dest_block,new_path,distance_audio)
+    direction = get_direction(pred[0][0], dest_block,new_path,distance_audio)
     distance_text = 'Your Location is ' + str(distance) +'meeters away'
     text_to_speach(distance_text,distance_audio)
     print(distance_text)
@@ -405,7 +368,17 @@ def animate(i):
         xs = r[0]
         ys = r[1]
     #plt.clear()
-    plt.scatter(xs, ys)
+
+    r = random()
+    b = random()
+    g = random()
+    color = (r, g, b)
+    if(direction == "Destination"):
+        plt.scatter(xs, ys, c=color)
+    elif(direction == "South"):
+        plt.scatter(xs, ys,marker="^", c=color)
+    elif(direction == "North"):  
+        plt.scatter(xs, ys,marker="v", c=color)  
 ani = animation.FuncAnimation(fig, animate, interval=1000)
 plt.show()
 
