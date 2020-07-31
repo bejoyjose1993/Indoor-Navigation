@@ -236,15 +236,12 @@ def get_nav_ref_points(cur_block, dest_block):
     Y = []
     if(len(cur_block) > 1):
         block_area = cur_block[0] + " " + cur_block[1]
-        #format_strings = ','.join(['%s'] * len(cur_block))
-        #my_cusor.execute("SELECT ref_point FROM indoor_navigation.geo_location_cord where block  IN (%s) " % format_strings, tuple(cur_block))
         select_stmt = "SELECT ref_point FROM indoor_navigation.geo_location_cord where block = %(cur_block1)s or block =  %(cur_block2)s and block_area = %(block_area)s"
         my_cusor.execute(select_stmt,{ 'cur_block1': cur_block[0] , 'cur_block2': cur_block[1], 'block_area' : block_area})
     else:
         block_area = cur_block[0]
         select_stmt = "SELECT ref_point FROM indoor_navigation.geo_location_cord where block = %(cur_block1)s and block_area = %(block_area)s"
-        my_cusor.execute(select_stmt,{ 'cur_block1': cur_block[0] , 'block_area' : block_area})
-            
+        my_cusor.execute(select_stmt,{ 'cur_block1': cur_block[0], 'block_area' : block_area})
     rows = my_cusor.fetchall()
     for r in rows:
         X =r[0]
@@ -311,7 +308,7 @@ KNeighborsClassifier(algorithm='auto', leaf_size=30, metric='minkowski',
 
 init_pred = initial_localization(initial_test_dir, initial_loc_audio)
 init_block = compute_init_block(init_pred)
-#print(init_block)
+print(init_block)
 if(len(init_block) > 1):
     block_text = 'User is located near block!' + init_block[0] +' and ' + init_block[1]
 else:
@@ -336,7 +333,7 @@ fig = plt.figure()
 #ax1 = fig.add_subplot(1,1,1)
 
 img = mpimg.imread("D:\\Project\\Dissertation\\floor_plan_samp.png")
-print(img)
+#print(img)
 plt.imshow(img, extent=[36.15,0,-4.90,51.32])
 ax=plt.gca()  
 ax.yaxis.tick_right()        
@@ -372,6 +369,7 @@ def animate(i):
     my_cusor = mydb.cursor()
     #select_stmt = "SELECT x_axis, y_axis FROM indoor_navigation.geo_loc_cord where mess_point = %(mess_point)s and ref_point =  %(reff_point)s"
     select_stmt = "SELECT x_axis, y_axis FROM indoor_navigation.geo_location_cord where mess_point = %(mess_point)s and ref_point =  %(reff_point)s"
+    
     my_cusor.execute(select_stmt,{ 'mess_point': pred[0][1] , 'reff_point': pred[0][0] })
     rows = my_cusor.fetchall()
     for r in rows:

@@ -12,6 +12,12 @@ from sklearn.neighbors import KNeighborsClassifier
 from playsound import playsound
 from gtts import gTTS 
 from collections import defaultdict
+from mpl_toolkits.mplot3d import Axes3D #for 3D plot
+from sklearn.cluster import KMeans      #use kmeans
+from sklearn.metrics import silhouette_samples, silhouette_score #to cal the silhouette_score
+from numpy import *
+import statistics 
+from statistics import mode 
 
 data_set_dir ="D:\\Project\\Dissertation\\Master\\master_data.csv"
 initial_test_dir = 'D:\\Project\\Dissertation\\raw_example.csv'
@@ -25,12 +31,17 @@ distance_audio ="D:\\Project\\Dissertation\\Audio\\distance.mp3"
 input_dest ="D:\\Project\\Dissertation\\Audio\\dest_block.mp3" 
 select_dest = "D:\\Project\\Dissertation\\Audio\\select_dest.mp3"
 
+#Kmeans Pre-requsits
+method = 'km'
+path_to_kmeans_data = 'D:\\Project\\Dissertation\\Master\\dump'
+test_raw_dir ="D:\\Project\\Dissertation\\raw_example.csv"
+
 #Connect DB using mysql.connector
 mydb = mysql.connector.connect(
     host = "localhost",
     user = "root",
     password = "root",
-    database = "indoor_navigation"
+    database = "indoor_nav_using_kmeans"
 )
 
 class Graph():
@@ -53,19 +64,31 @@ class Graph():
         self.weights[(to_node, from_node)] = weight
 
 
+def load_kmeans_data(path_to_data):
+    # read test data
+    FILE_NAME = path_to_data + '/new_cluster_df.csv'
+    data = pd.read_csv(FILE_NAME,header=0)
+    return data
 
-def load_data(path_to_data):
-    data = pd.read_csv(path_to_data,header=0)
-    return (data)
+def load_cluster_centers(path_to_data):
+    FILE_NAME = path_to_data + '/new_cluster.csv'
+    clust = pd.read_csv(FILE_NAME,header=0)
+    cs_temp = pd.read_csv(path_to_data + '/cs_temp.csv',header=0)
+    ss_temp = pd.read_csv(path_to_data + '/ss_temp.csv',header=0)
+    return clust, cs_temp, ss_temp
+
+def get_all_cluster_data(data):
+    df =  pd.DataFrame(data)
+    rss_df = df[['0x0001','0x0002','0x0003','0x0004','0x0005','0x0006','0x0012','0x0013','0x0014','0x0015','0x0016']]
+    loc_df = df[['x_axis','y_axis','z_axis']]
+    loc_df = df[['x_axis','y_axis','z_axis']]
+    cluster_labels = df[['cluster_labels']]
+    return loc_df, rss_df, cluster_labels
+
 
 def load_test_data(path_to_data):
     data = pd.read_csv(path_to_data, names=['date','time','type','id_0','id_1','id_2','sensor_data','temperature','humidity','raw_data'])
     return (data)    
-
-def get_req_data(data):
-    df =  pd.DataFrame(data)
-    df = df[['0x0001','0x0002','0x0003','0x0004','0x0005','0x0006','0x0012','0x0013','0x0014','0x0015','0x0016','reference_points','Messurement_points']]
-    return df
 
 def get_req_test_data(data):
     df =  pd.DataFrame(data)
@@ -119,29 +142,144 @@ def compute_RSSI(raw_data):
     int_val = int(hex_val, 16)
     rssi_val = int_val - 256
     return rssi_val
+
+# START KMEANS PREDICTION MODEL SESSION    
+def distance(a, b):
+    return np.sqrt(np.sum(np.power(a-b, 2)))
+
+def cluster_subset_kmeans(clusters, labels, pos, X_test):
+    d = []
     
+    for i,c in enumerate(clust):
+        #d.append(distance(pos[:2], c[:2]))
+        d.append(np.sqrt(np.sum(np.power(pos[:2]-c[:2], 2))))
+
+    center = np.argmin(d)
+
+    return (ss[center], cs[center])
+
+def bayes_position(X_train, y_train, X_test, N, sigma, eps, th, lth, div):
+    diff = X_train - X_test
+
+    proba = 1/(np.sqrt(2*np.pi)*sigma)*np.exp( \
+        -np.power(diff, 2)/(2.0*sigma**2))
+
+    proba[np.isnan(proba)] = eps
+    proba[proba < th] = eps
+    proba = np.log(proba)
+    cost = np.sum(proba, axis=1)
+
+    inv = np.zeros(X_train.shape[0])
+    X_train = X_train.values
+    for i in range(X_train.shape[0]):
+        a = np.logical_and(~np.isnan(X_train[i]), np.isnan(X_test))
+        b = np.logical_and(np.isnan(X_train[i]), ~np.isnan(X_test))
+
+        nfound = np.concatenate((X_train[i,a], X_test[b]))
+        for v in nfound[nfound > lth]:
+            inv[i] += v - lth
+
+    inv /= div
+    cost -= inv
+
+    idx = np.argsort(cost)[::-1]
+
+    bias = 3
+    position = np.zeros(3)
+    N = min(N, y_train.shape[0])
+    idx = idx.to_numpy()
+    for i in range(N):
+        weight = N-i
+        if i == 0:
+            weight += bias    
+        position += weight*y_train[idx[i]]
+
+    position /= N*(N+1)/2+bias
+
+    return (np.array(position), np.mean(inv[idx[:20]]))
+
+def position_route(method, X_train, y_train, X_test, clusters, labels,
+                   N=5, sigma=5, eps=3e-4, th=1e-25, lth=-85, div=10):
+
+    error = []
+    error2D = []
+    fdetect = 0
+    pos_pred = []
+    cused = []
+    x_pred = []
+    y_pred = []
+    for i in range(X_test.shape[0]):
+        if i > 1:
+            if method=='km':
+                subset, c = cluster_subset_kmeans(clusters, labels, pos, X_test[i])
+                cused.append(c)
+        else:
+            subset = np.ones(X_train.shape[0]).astype(np.bool)
+
+        if method=='km':
+            pos, q = bayes_position(X_train[subset], y_train[subset], X_test[i], N, sigma,
+                                    eps, th, lth, div)
+
+            if q > 50:
+                pos, _ = bayes_position(X_train, y_train, X_test[i], N, sigma,
+                                        eps, th, lth, div)
+
+        if i > 1:
+            pos_pred.append(pos)
+    print("y_pred")
+    for pred in pos_pred :
+        x_pred.append(pred[0])
+        y_pred.append(pred[1])
+
+    #x = Counter(x_pred)
+    x_max_count = mode(x_pred)
+    y_max_count = mode(y_pred)
+    #y = Counter(y_pred)
+    #y_max_count = y.most_common(1)[0][0]
+    #print(x.most_common(1))
+    pred = [round(x_max_count,1),round(y_max_count,1)]
+    print(pred)
+    print(pos_pred)
+    return (np.array(pos_pred), np.array(error), np.array(error2D), fdetect, np.array(cused), pred)
+################ END KMEANS PREDICTION MODEL SESSION  ################  
 
 
-def initial_localization(initial_loc_path, audio_file):
+
+def initial_localization(initial_loc_path, audio_file, matrix, rss_df, cluster_labels, clust, cs, ss):
     playsound(audio_file)
-    data  = load_test_data(initial_loc_path)
+
+    #Get Test Data 
+    data  = load_test_data(test_raw_dir)
     my_data = format_data(data)
     x_test = get_req_test_data(my_data)
-    x_test = x_test.fillna(0)
-    test_mean = x_test.mean(axis = 0).to_frame().transpose()
-    pred = knn.predict(test_mean)
+    test_matrix = x_test.values
+
+    #Predict Code
+    y, error3D, error2D, fdetect, cused, pred = position_route(method, rss_df,
+            matrix, test_matrix, clust, cluster_labels, N=5, eps=1e-3)
     return pred
 
 def compute_init_block(pred):
     my_cusor = mydb.cursor()
     block = []
-    select_stmt = "SELECT block FROM indoor_navigation.geo_location_cord where mess_point = %(mess_point)s and ref_point =  %(reff_point)s"
-    my_cusor.execute(select_stmt,{ 'mess_point': pred[0][1] , 'reff_point': pred[0][0] })
+    select_stmt = "SELECT block FROM indoor_nav_using_kmeans.geo_location_cord where x_axis = %(x_axis)s and y_axis =  %(y_axis)s"
+    my_cusor.execute(select_stmt,{ 'x_axis': pred[0] , 'y_axis': pred[1] })
     rows = my_cusor.fetchall()
     for r in rows:
         block.append(r[0])  
     my_cusor.close()    
     return block
+
+def get_refpoint_from_pos(pred):
+    my_cusor = mydb.cursor()
+    block = []
+    select_stmt = "SELECT ref_point FROM indoor_nav_using_kmeans.geo_location_cord where x_axis = %(x_axis)s and y_axis =  %(y_axis)s"
+    my_cusor.execute(select_stmt,{ 'x_axis': pred[0] , 'y_axis': pred[1] })
+    rows = my_cusor.fetchall()
+    for r in rows:
+        block.append(r[0])  
+    my_cusor.close()    
+    return block    
 
 def text_to_speach(mytext, audio_file):
     language = 'en'
@@ -207,7 +345,7 @@ def dijsktra(graph, initial, end):
         #Calculate Distance
         if (next_node != None):
             my_cusor = mydb.cursor()
-            select_stmt = "SELECT distance FROM indoor_navigation.edge_direction_graph where from_edge = %(current_node)s and to_edge =  %(next_node)s"
+            select_stmt = "SELECT distance FROM indoor_nav_using_kmeans.edge_direction_graph where from_edge = %(current_node)s and to_edge =  %(next_node)s"
             my_cusor.execute(select_stmt,{ 'current_node': current_node , 'next_node': next_node })
             rows = my_cusor.fetchall()
             for r in rows:
@@ -218,10 +356,11 @@ def dijsktra(graph, initial, end):
     # Reverse path
     path = path[::-1]
     return path, distance
+
 def get_block_ref_point(block_name):
     my_cusor = mydb.cursor()
     Y = []
-    stmt = "SELECT ref_point FROM indoor_navigation.geo_location_cord where block = %(block_name)s"
+    stmt = "SELECT ref_point FROM indoor_nav_using_kmeans.geo_location_cord where block = %(block_name)s"
     my_cusor.execute(stmt,{ 'block_name': block_name})
     rows = my_cusor.fetchall()
     for r in rows:
@@ -236,20 +375,18 @@ def get_nav_ref_points(cur_block, dest_block):
     Y = []
     if(len(cur_block) > 1):
         block_area = cur_block[0] + " " + cur_block[1]
-        #format_strings = ','.join(['%s'] * len(cur_block))
-        #my_cusor.execute("SELECT ref_point FROM indoor_navigation.geo_location_cord where block  IN (%s) " % format_strings, tuple(cur_block))
-        select_stmt = "SELECT ref_point FROM indoor_navigation.geo_location_cord where block = %(cur_block1)s or block =  %(cur_block2)s and block_area = %(block_area)s"
+        select_stmt = "SELECT ref_point FROM indoor_nav_using_kmeans.geo_location_cord where block = %(cur_block1)s or block =  %(cur_block2)s and block_area = %(block_area)s"
         my_cusor.execute(select_stmt,{ 'cur_block1': cur_block[0] , 'cur_block2': cur_block[1], 'block_area' : block_area})
     else:
         block_area = cur_block[0]
-        select_stmt = "SELECT ref_point FROM indoor_navigation.geo_location_cord where block = %(cur_block1)s and block_area = %(block_area)s"
-        my_cusor.execute(select_stmt,{ 'cur_block1': cur_block[0] , 'block_area' : block_area})
-            
+        select_stmt = "SELECT ref_point FROM indoor_nav_using_kmeans.geo_location_cord where block = %(cur_block1)s and block_area = %(block_area)s"
+        my_cusor.execute(select_stmt,{ 'cur_block1': cur_block[0], 'block_area' : block_area})
+
     rows = my_cusor.fetchall()
     for r in rows:
         X =r[0]
 
-    dest_stmt = "SELECT ref_point,x_axis, y_axis FROM indoor_navigation.geo_location_cord where block = %(dest_block)s"
+    dest_stmt = "SELECT ref_point,x_axis, y_axis FROM indoor_nav_using_kmeans.geo_location_cord where block = %(dest_block)s"
     dest_cusor.execute(dest_stmt,{ 'dest_block': dest_block})
     rows = dest_cusor.fetchall()
     for r in rows:
@@ -267,7 +404,7 @@ def get_direction(cur_rp, dest_block,path, distance_audio):
         next_rp = path[path.index(cur_rp)+1]
 
     dest_cusor = mydb.cursor()
-    dest_stmt = "SELECT ref_point FROM indoor_navigation.geo_location_cord where block = %(dest_block)s"
+    dest_stmt = "SELECT ref_point FROM indoor_nav_using_kmeans.geo_location_cord where block = %(dest_block)s"
     dest_cusor.execute(dest_stmt,{ 'dest_block': dest_block})
     rows = dest_cusor.fetchall()
     for r in rows:
@@ -283,7 +420,7 @@ def get_direction(cur_rp, dest_block,path, distance_audio):
         print(distance_text)
     else:
         my_cusor = mydb.cursor()
-        select_stmt = "SELECT direction_comment,direction FROM indoor_navigation.edge_direction_graph where from_edge = %(cur_rp)s and to_edge =  %(next_rp)s"
+        select_stmt = "SELECT direction_comment,direction FROM indoor_nav_using_kmeans.edge_direction_graph where from_edge = %(cur_rp)s and to_edge =  %(next_rp)s"
         my_cusor.execute(select_stmt,{ 'cur_rp': cur_rp , 'next_rp' : next_rp})
         rows = my_cusor.fetchall()
         for r in rows:
@@ -294,28 +431,26 @@ def get_direction(cur_rp, dest_block,path, distance_audio):
         text_to_speach(distance_text,distance_audio)
         print(distance_text)
     return  direction       
-        
 
-# Load Data
-data  = load_data(data_set_dir)
-df = get_req_data(data)
-# KNN Training
-X_train = df.drop(['reference_points','Messurement_points'],axis=1)
-X_train = X_train.fillna(0)
-y_train = df[['reference_points','Messurement_points']]
-knn = KNeighborsClassifier(n_neighbors=1)
-knn.fit(X_train,y_train)
-KNeighborsClassifier(algorithm='auto', leaf_size=30, metric='minkowski',
-           metric_params=None, n_jobs=1, n_neighbors=1, p=2,
-           weights='uniform')
+#Get Train Data 
+train = load_kmeans_data(path_to_kmeans_data)
+try1, rss_df, cluster_labels  = get_all_cluster_data(train)
+matrix = try1.values
 
-init_pred = initial_localization(initial_test_dir, initial_loc_audio)
+#Get Saved Cluster Data 
+clust_ld, cs_temp, ss_temp = load_cluster_centers(path_to_kmeans_data)
+clust = clust_ld.to_numpy()
+cs = cs_temp.to_numpy()
+ss = ss_temp.to_numpy()
+
+init_pred = initial_localization(initial_test_dir, initial_loc_audio, matrix, rss_df, cluster_labels, clust, cs, ss)
 init_block = compute_init_block(init_pred)
-#print(init_block)
+print(init_block)
 if(len(init_block) > 1):
     block_text = 'User is located near block!' + init_block[0] +' and ' + init_block[1]
 else:
     block_text = 'User is located near block!' + init_block[0]
+
 
 text_to_speach(block_text,init_block_audio)
 #print(block_text)
@@ -351,34 +486,40 @@ plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left', borderaxespad=0.)
 def animate(i):
 
     from random import random
-#    data  = load_data(test_set_dir)
+#   data  = load_data(test_set_dir)
+    #Get Test Data 
     data  = load_test_data(test_raw_dir)
-    
-
     my_data = format_data(data)
     x_test = get_req_test_data(my_data)
-    x_test = x_test.fillna(0)
-    test_mean = x_test.mean(axis = 0).to_frame().transpose()
+    test_matrix = x_test.values
 
-    pred = knn.predict(test_mean)
-    X = pred[0][0]
+    #Predict Code
+    y, error3D, error2D, fdetect, cused, pred = position_route(method, rss_df,
+            matrix, test_matrix, clust, cluster_labels, N=5, eps=1e-3)
+    rp_pred = get_refpoint_from_pos(pred)
+    #pred = knn.predict(test_mean)
+    print(rp_pred)
+    print(pred)
+    X = rp_pred[0]
     Y = get_block_ref_point(dest_block)
     new_path, distance = dijsktra(graph, X, Y)
-    direction = get_direction(pred[0][0], dest_block,new_path,distance_audio)
+    direction = get_direction(rp_pred[0], dest_block,new_path,distance_audio)
     distance_text = 'Your Location is ' + str(distance) +'meeters away'
     text_to_speach(distance_text,distance_audio)
     print(distance_text)
 
-    my_cusor = mydb.cursor()
+    #print(rp_pred)
+    #my_cusor = mydb.cursor()
     #select_stmt = "SELECT x_axis, y_axis FROM indoor_navigation.geo_loc_cord where mess_point = %(mess_point)s and ref_point =  %(reff_point)s"
-    select_stmt = "SELECT x_axis, y_axis FROM indoor_navigation.geo_location_cord where mess_point = %(mess_point)s and ref_point =  %(reff_point)s"
-    my_cusor.execute(select_stmt,{ 'mess_point': pred[0][1] , 'reff_point': pred[0][0] })
-    rows = my_cusor.fetchall()
-    for r in rows:
-        xs = r[0]
-        ys = r[1]
+    #select_stmt = "SELECT x_axis, y_axis FROM indoor_nav_using_kmeans.geo_location_cord where mess_point = %(mess_point)s and ref_point =  %(reff_point)s"
+    #my_cusor.execute(select_stmt,{ 'mess_point': pred[0][1] , 'reff_point': pred[0][0] })
+    #rows = my_cusor.fetchall()
+    #for r in rows:
+    #    xs = r[0]
+    #    ys = r[1]
     #plt.clear()
-
+    xs = pred[0]
+    ys = pred[1]
     r = random()
     b = random()
     g = random()

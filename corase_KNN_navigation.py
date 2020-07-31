@@ -1,4 +1,5 @@
-import pandas as pd
+import pandas as pd 
+from pandas import DataFrame
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 import numpy as np
@@ -54,8 +55,14 @@ class Graph():
 
 
 
-def load_data(path_to_data):
-    data = pd.read_csv(path_to_data,header=0)
+def load_data():
+    my_cusor = mydb.cursor()
+    select_stmt = "SELECT * FROM indoor_navigation.clustered_ref_point ORDER BY reference_point ASC;"
+    my_cusor.execute(select_stmt)
+    data = DataFrame(my_cusor.fetchall())
+    field_names = [i[0] for i in my_cusor.description]
+    data.columns = field_names
+    #print(data)
     return (data)
 
 def load_test_data(path_to_data):
@@ -64,7 +71,7 @@ def load_test_data(path_to_data):
 
 def get_req_data(data):
     df =  pd.DataFrame(data)
-    df = df[['0x0001','0x0002','0x0003','0x0004','0x0005','0x0006','0x0012','0x0013','0x0014','0x0015','0x0016','reference_points','Messurement_points']]
+    df = df[['0x0001','0x0002','0x0003','0x0004','0x0005','0x0006','0x0012','0x0013','0x0014','0x0015','0x0016','reference_point']]
     return df
 
 def get_req_test_data(data):
@@ -135,12 +142,13 @@ def initial_localization(initial_loc_path, audio_file):
 def compute_init_block(pred):
     my_cusor = mydb.cursor()
     block = []
-    select_stmt = "SELECT block FROM indoor_navigation.geo_location_cord where mess_point = %(mess_point)s and ref_point =  %(reff_point)s"
-    my_cusor.execute(select_stmt,{ 'mess_point': pred[0][1] , 'reff_point': pred[0][0] })
+    select_stmt = "SELECT block FROM indoor_navigation.geo_location_cord where ref_point =  %(reff_point)s"
+    my_cusor.execute(select_stmt,{'reff_point': pred[0]})
     rows = my_cusor.fetchall()
     for r in rows:
         block.append(r[0])  
-    my_cusor.close()    
+    my_cusor.close()   
+    block = list(dict.fromkeys(block)) 
     return block
 
 def text_to_speach(mytext, audio_file):
@@ -236,15 +244,12 @@ def get_nav_ref_points(cur_block, dest_block):
     Y = []
     if(len(cur_block) > 1):
         block_area = cur_block[0] + " " + cur_block[1]
-        #format_strings = ','.join(['%s'] * len(cur_block))
-        #my_cusor.execute("SELECT ref_point FROM indoor_navigation.geo_location_cord where block  IN (%s) " % format_strings, tuple(cur_block))
         select_stmt = "SELECT ref_point FROM indoor_navigation.geo_location_cord where block = %(cur_block1)s or block =  %(cur_block2)s and block_area = %(block_area)s"
-        my_cusor.execute(select_stmt,{ 'cur_block1': cur_block[0] , 'cur_block2': cur_block[1], 'block_area' : block_area})
+        my_cusor.execute(select_stmt,{ 'cur_block1': cur_block[0], 'cur_block2': cur_block[1], 'block_area' : block_area})
     else:
         block_area = cur_block[0]
         select_stmt = "SELECT ref_point FROM indoor_navigation.geo_location_cord where block = %(cur_block1)s and block_area = %(block_area)s"
-        my_cusor.execute(select_stmt,{ 'cur_block1': cur_block[0] , 'block_area' : block_area})
-            
+        my_cusor.execute(select_stmt,{ 'cur_block1': cur_block[0], 'block_area' : block_area})
     rows = my_cusor.fetchall()
     for r in rows:
         X =r[0]
@@ -295,14 +300,38 @@ def get_direction(cur_rp, dest_block,path, distance_audio):
         print(distance_text)
     return  direction       
         
+def get_detail_pred_data(pred):
+    #field_names = ['0x0001','0x0002','0x0003','0x0004','0x0005','0x0006','0x0012','0x0013','0x0014','0x0015','0x0016','x_axis','y_axis','z_axis','orientation','messurement_points','labels','cluster_labels']
+    my_cusor = mydb.cursor()
+    select_stmt = "SELECT * FROM indoor_navigation.master_with_kmean_cluster where reference_points =  %(reference_points)s;"
+    my_cusor.execute(select_stmt,{'reference_points': pred[0]})
+    data = DataFrame(my_cusor.fetchall())
+    
+    field_names = [i[0] for i in my_cusor.description]
+    data.columns = field_names 
+    #print(data)
+    return (data)
+
+def get_detail_prediction(data,test_mean):
+    data = data[['0x0001','0x0002','0x0003','0x0004','0x0005','0x0006','0x0012','0x0013','0x0014','0x0015','0x0016','messurement_points','reference_points']]
+    X_det_train = data.drop(['messurement_points','reference_points'],axis=1)
+    X_det_train = X_det_train.fillna(0)
+    y_det_train = data[['messurement_points','reference_points']]
+    det_knn = KNeighborsClassifier(n_neighbors=1)
+    det_knn.fit(X_det_train,y_det_train)
+    KNeighborsClassifier(algorithm='auto', leaf_size=30, metric='minkowski',
+           metric_params=None, n_jobs=1, n_neighbors=1, p=2,
+           weights='uniform')
+    det_pred = det_knn.predict(test_mean)
+    return (det_pred)
 
 # Load Data
-data  = load_data(data_set_dir)
+data  = load_data()
 df = get_req_data(data)
 # KNN Training
-X_train = df.drop(['reference_points','Messurement_points'],axis=1)
+X_train = df.drop(['reference_point'],axis=1)
 X_train = X_train.fillna(0)
-y_train = df[['reference_points','Messurement_points']]
+y_train = df[['reference_point']]
 knn = KNeighborsClassifier(n_neighbors=1)
 knn.fit(X_train,y_train)
 KNeighborsClassifier(algorithm='auto', leaf_size=30, metric='minkowski',
@@ -336,7 +365,7 @@ fig = plt.figure()
 #ax1 = fig.add_subplot(1,1,1)
 
 img = mpimg.imread("D:\\Project\\Dissertation\\floor_plan_samp.png")
-print(img)
+#print(img)
 plt.imshow(img, extent=[36.15,0,-4.90,51.32])
 ax=plt.gca()  
 ax.yaxis.tick_right()        
@@ -361,19 +390,27 @@ def animate(i):
     test_mean = x_test.mean(axis = 0).to_frame().transpose()
 
     pred = knn.predict(test_mean)
-    X = pred[0][0]
+    print("My pred")
+    print(pred)
+    #get_specific
+    X = pred[0]
     Y = get_block_ref_point(dest_block)
     new_path, distance = dijsktra(graph, X, Y)
-    direction = get_direction(pred[0][0], dest_block,new_path,distance_audio)
-    distance_text = 'Your Location is ' + str(distance) +'meeters away'
+    direction = get_direction(pred[0], dest_block,new_path,distance_audio)
+    distance_text = 'Your Location is approximately' + str(distance) +'meeters away'
     text_to_speach(distance_text,distance_audio)
     print(distance_text)
 
+    data = get_detail_pred_data(pred)
+    det_pred = get_detail_prediction(data,test_mean)
     my_cusor = mydb.cursor()
+    print(det_pred[0][1])
     #select_stmt = "SELECT x_axis, y_axis FROM indoor_navigation.geo_loc_cord where mess_point = %(mess_point)s and ref_point =  %(reff_point)s"
-    select_stmt = "SELECT x_axis, y_axis FROM indoor_navigation.geo_location_cord where mess_point = %(mess_point)s and ref_point =  %(reff_point)s"
-    my_cusor.execute(select_stmt,{ 'mess_point': pred[0][1] , 'reff_point': pred[0][0] })
+    select_stmt = "SELECT x_axis, y_axis FROM indoor_navigation.geo_location_cord where mess_point = %(mess_point)s and ref_point =  %(ref_point)s"
+    my_cusor.execute(select_stmt,{ 'mess_point': det_pred[0][0] , 'ref_point': det_pred[0][1] })
     rows = my_cusor.fetchall()
+    
+    print(rows)
     for r in rows:
         xs = r[0]
         ys = r[1]
