@@ -447,9 +447,9 @@ init_pred = initial_localization(initial_test_dir, initial_loc_audio, matrix, rs
 init_block = compute_init_block(init_pred)
 print(init_block)
 if(len(init_block) > 1):
-    block_text = 'User is located near block!' + init_block[0] +' and ' + init_block[1]
+    block_text = 'User is located near block! ' + init_block[0] +' and ' + init_block[1]
 else:
-    block_text = 'User is located near block!' + init_block[0]
+    block_text = 'User is located near block! ' + init_block[0]
 
 
 text_to_speach(block_text,init_block_audio)
@@ -471,7 +471,7 @@ fig = plt.figure()
 #ax1 = fig.add_subplot(1,1,1)
 
 img = mpimg.imread("D:\\Project\\Dissertation\\floor_plan_samp.png")
-print(img)
+#print(img)
 plt.imshow(img, extent=[36.15,0,-4.90,51.32])
 ax=plt.gca()  
 ax.yaxis.tick_right()        

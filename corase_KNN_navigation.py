@@ -342,9 +342,9 @@ init_pred = initial_localization(initial_test_dir, initial_loc_audio)
 init_block = compute_init_block(init_pred)
 #print(init_block)
 if(len(init_block) > 1):
-    block_text = 'User is located near block!' + init_block[0] +' and ' + init_block[1]
+    block_text = 'User is located near block! ' + init_block[0] +' and ' + init_block[1]
 else:
-    block_text = 'User is located near block!' + init_block[0]
+    block_text = 'User is located near block! ' + init_block[0]
 
 text_to_speach(block_text,init_block_audio)
 #print(block_text)
