@@ -13,11 +13,13 @@ from playsound import playsound
 from gtts import gTTS 
 from collections import defaultdict
 from mpl_toolkits.mplot3d import Axes3D #for 3D plot
-from sklearn.cluster import KMeans      #use kmeans
+from sklearn.cluster import AffinityPropagation      #use kmeans
 from sklearn.metrics import silhouette_samples, silhouette_score #to cal the silhouette_score
 from numpy import *
-import statistics 
-from statistics import mode 
+from pandas import DataFrame
+import statistics
+import time 
+from statistics import mode, mean 
 
 data_set_dir ="D:\\Project\\Dissertation\\Master\\master_data.csv"
 initial_test_dir = 'D:\\Project\\Dissertation\\raw_example.csv'
@@ -32,8 +34,8 @@ input_dest ="D:\\Project\\Dissertation\\Audio\\dest_block.mp3"
 select_dest = "D:\\Project\\Dissertation\\Audio\\select_dest.mp3"
 
 #Kmeans Pre-requsits
-method = 'km'
-path_to_kmeans_data = 'D:\\Project\\Dissertation\\Master\\dump'
+method = 'ap'
+#path_to_database = 'D:\\Project\\Dissertation\\Master\\'
 test_raw_dir ="D:\\Project\\Dissertation\\raw_example.csv"
 
 #Connect DB using mysql.connector
@@ -41,7 +43,7 @@ mydb = mysql.connector.connect(
     host = "localhost",
     user = "root",
     password = "root",
-    database = "indoor_nav_using_kmeans"
+    database = "indoor_nav_using_affinity_prop"
 )
 
 class Graph():
@@ -63,36 +65,28 @@ class Graph():
         self.weights[(from_node, to_node)] = weight
         self.weights[(to_node, from_node)] = weight
 
-
-def load_kmeans_data(path_to_data):
+def load_data():
     # read test data
-    FILE_NAME = path_to_data + '/new_cluster_df.csv'
-    data = pd.read_csv(FILE_NAME,header=0)
+    my_cusor = mydb.cursor()
+    block = []
+    select_stmt = "SELECT * FROM indoor_nav_using_affinity_prop.affinity_prop_master"
+    my_cusor.execute(select_stmt)
+    data = DataFrame(my_cusor.fetchall())
+    field_names = [i[0] for i in my_cusor.description]
+    data.columns = field_names  
+    my_cusor.close()    
     return data
 
-def load_cluster_centers(path_to_data):
-    FILE_NAME = path_to_data + '/new_cluster.csv'
-    clust = pd.read_csv(FILE_NAME,header=0)
-    cs_temp = pd.read_csv(path_to_data + '/cs_temp.csv',header=0)
-    ss_temp = pd.read_csv(path_to_data + '/ss_temp.csv',header=0)
-    return clust, cs_temp, ss_temp
-
-def get_all_cluster_data(data):
+def get_RSS(data):
     df =  pd.DataFrame(data)
     rss_df = df[['0x0001','0x0002','0x0003','0x0004','0x0005','0x0006','0x0012','0x0013','0x0014','0x0015','0x0016']]
     loc_df = df[['x_axis','y_axis','z_axis']]
-    cluster_labels = df[['cluster_labels']]
-    return loc_df, rss_df, cluster_labels
-
+    #loc_df = df[['reference_points','messurement_points']]
+    return rss_df, loc_df 
 
 def load_test_data(path_to_data):
     data = pd.read_csv(path_to_data, names=['date','time','type','id_0','id_1','id_2','sensor_data','temperature','humidity','raw_data'])
-    return (data)    
-
-def get_req_test_data(data):
-    df =  pd.DataFrame(data)
-    df = df[['0x0001','0x0002','0x0003','0x0004','0x0005','0x0006','0x0012','0x0013','0x0014','0x0015','0x0016']]
-    return df
+    return (data)   
 
 def format_data(data):
     #Empty data Frame
@@ -135,6 +129,10 @@ def format_data(data):
     #print(dataframe1)
     return dataframe1
 
+def get_req_test_data(data):
+    df =  pd.DataFrame(data)
+    df = df[['0x0001','0x0002','0x0003','0x0004','0x0005','0x0006','0x0012','0x0013','0x0014','0x0015','0x0016']]
+    return df
 
 def compute_RSSI(raw_data):
     hex_val = raw_data[-2:]
@@ -143,19 +141,50 @@ def compute_RSSI(raw_data):
     return rssi_val
 
 # START KMEANS PREDICTION MODEL SESSION    
-def distance(a, b):
-    return np.sqrt(np.sum(np.power(a-b, 2)))
+def bdist(a, b, sigma, eps, th, lth=-85, div=10):
+    diff = a - b
 
-def cluster_subset_kmeans(clusters, labels, pos, X_test):
-    d = []
-    
-    for i,c in enumerate(clust):
-        #d.append(distance(pos[:2], c[:2]))
-        d.append(np.sqrt(np.sum(np.power(pos[:2]-c[:2], 2))))
+    #Let us compare the sampled distribution to the analytical distribution. 
+    #We generate a large set of samples, and calculate the probability of getting 
+    # each value using the matplotlib.pyplot.hist command. 
+    #https://kitchingroup.cheme.cmu.edu/pycse/pycse.html
+    proba = 1/(np.sqrt(2*np.pi)*sigma)*np.exp( \
+        -np.power(diff, 2)/(2.0*sigma**2))
 
-    center = np.argmin(d)
+    proba[np.isnan(proba)] = eps
+    proba[proba < th] = eps
+    proba = np.log(proba)
+    if a.ndim == 2:
+        cost = np.sum(proba, axis=1)
+    else:
+        cost = np.sum(proba)
 
-    return (ss[center], cs[center])
+    inv = np.zeros(a.shape[0])
+    for i in range(a.shape[0]):
+        aa = np.logical_and(~np.isnan(a[i]), np.isnan(b))
+        bb = np.logical_and(np.isnan(a[i]), ~np.isnan(b))
+
+        nfound = np.concatenate((a[i,aa], b[bb]))
+        for v in nfound[nfound > lth]:
+            inv[i] += v - lth
+
+    inv /= div
+    cost -= inv
+
+    return cost
+
+def cluster_subset_affinityprop(clusters, labels, X_test):
+    subset = np.zeros(labels.shape[0]).astype(np.bool)
+
+    d = bdist(clusters, X_test, 5, 1e-3, 1e-25)
+    idx = np.argsort(d)[::-1]
+
+    cused = 0
+    for c in idx[:5]:
+        subset = np.logical_or(subset, c == labels)
+        cused += 1
+
+    return (subset, cused)
 
 def bayes_position(X_train, y_train, X_test, N, sigma, eps, th, lth, div):
     diff = X_train - X_test
@@ -169,7 +198,6 @@ def bayes_position(X_train, y_train, X_test, N, sigma, eps, th, lth, div):
     cost = np.sum(proba, axis=1)
 
     inv = np.zeros(X_train.shape[0])
-    X_train = X_train.values
     for i in range(X_train.shape[0]):
         a = np.logical_and(~np.isnan(X_train[i]), np.isnan(X_test))
         b = np.logical_and(np.isnan(X_train[i]), ~np.isnan(X_test))
@@ -186,11 +214,11 @@ def bayes_position(X_train, y_train, X_test, N, sigma, eps, th, lth, div):
     bias = 3
     position = np.zeros(3)
     N = min(N, y_train.shape[0])
-    idx = idx.to_numpy()
     for i in range(N):
         weight = N-i
         if i == 0:
-            weight += bias    
+            weight += bias
+
         position += weight*y_train[idx[i]]
 
     position /= N*(N+1)/2+bias
@@ -207,28 +235,22 @@ def position_route(method, X_train, y_train, X_test, clusters, labels,
     cused = []
     x_pred = []
     y_pred = []
-    print(X_test.shape[0])
-    print(X_test)
     for i in range(X_test.shape[0]):
         if i > 1:
-            if method=='km':
-                subset, c = cluster_subset_kmeans(clusters, labels, pos, X_test[i])
-                cused.append(c)
+            if method=='ap':
+                subset, c = cluster_subset_affinityprop(clusters, labels, X_test[i])
+                cused.append(c)    
         else:
             subset = np.ones(X_train.shape[0]).astype(np.bool)
-        print(subset)
-        if method=='km':
-            pos, q = bayes_position(X_train[subset], y_train[subset], X_test[i], N, sigma,
-                                    eps, th, lth, div)
 
-            if q > 50:
-                pos, _ = bayes_position(X_train, y_train, X_test[i], N, sigma,
-                                        eps, th, lth, div)
+        if method=='ap':
+            pos, _ = bayes_position(X_train[subset], y_train[subset], X_test[i], N, sigma,
+                                    eps, th, lth, div)
+        #pos[2] = floors[np.argmin(np.abs(floors-pos[2]))]
 
         if i > 1:
             pos_pred.append(pos)
-    print("y_pred")
-    print(pos_pred)
+
     for pred in pos_pred :
         x_pred.append(pred[0])
         y_pred.append(pred[1])
@@ -236,47 +258,45 @@ def position_route(method, X_train, y_train, X_test, clusters, labels,
     #x = Counter(x_pred)
     x_max_count = mode(x_pred)
     y_max_count = mode(y_pred)
-    #y = Counter(y_pred)
-    #y_max_count = y.most_common(1)[0][0]
-    #print(x.most_common(1))
     pred = [round(x_max_count,1),round(y_max_count,1)]
     print(pred)
     return (np.array(pos_pred), np.array(error), np.array(error2D), fdetect, np.array(cused), pred)
-################ END KMEANS PREDICTION MODEL SESSION  ################  
+################ END AFFINITY PREDICTION MODEL SESSION  ################  
 
 
 
-def initial_localization(initial_loc_path, audio_file, matrix, rss_df, cluster_labels, clust, cs, ss):
+def initial_localization(initial_loc_path, audio_file, X_train, y_train, method, clusters, labels):
     playsound(audio_file)
 
     #Get Test Data 
     data  = load_test_data(test_raw_dir)
     my_data = format_data(data)
     x_test = get_req_test_data(my_data)
+    #test_matrix = x_test.values
     test_mean = x_test.mean(axis = 0).to_frame().transpose()
     test_matrix_new = test_mean.values
     test_matrix_new = np.vstack((test_matrix_new, test_mean.values))
     test_matrix = np.vstack((test_matrix_new, test_mean.values))
-
-    print(test_matrix)
     
-
     #Predict Code
-    y, error3D, error2D, fdetect, cused, pred = position_route(method, rss_df,
-            matrix, test_matrix, clust, cluster_labels, N=5, eps=1e-3)
+    tsum = 0
+    t = time.process_time()
+    # estimate positions for test data
+    y, error3D, error2D, fdetect, cused, pred = position_route(method, X_ktrain,
+            y_ktrain, test_matrix, clusters, labels, N=5, eps=1e-3)
     return pred
 
-def compute_init_block(pred):
+def get_absolute_loc_for_nav(pred):
     my_cusor = mydb.cursor()
     block = []
-    select_stmt = "SELECT block FROM indoor_nav_using_kmeans.geo_location_cord where x_axis = %(x_axis)s and y_axis =  %(y_axis)s"
+    select_stmt = "SELECT block FROM indoor_nav_using_affinity_prop.geo_location_cord where x_axis = %(x_axis)s and y_axis =  %(y_axis)s"
     my_cusor.execute(select_stmt,{ 'x_axis': pred[0] , 'y_axis': pred[1] })
     rows = my_cusor.fetchall()
     for r in rows:
         block.append(r[0])  
 
     if(len(block)<1):
-        select_stmt = "select block, block_area from indoor_nav_using_kmeans.geo_location_cord order by abs(x_axis - %(x_axis)s) + abs(y_axis - %(y_axis)s) limit 1"
+        select_stmt = "select block, block_area from indoor_nav_using_affinity_prop.geo_location_cord order by abs(x_axis - %(x_axis)s) + abs(y_axis - %(y_axis)s) limit 1"
         my_cusor.execute(select_stmt,{ 'x_axis': pred[0] , 'y_axis': pred[1] })
         rows = my_cusor.fetchall()
         for r in rows:
@@ -291,7 +311,15 @@ def get_refpoint_from_pos(pred):
     my_cusor.execute(select_stmt,{ 'x_axis': pred[0] , 'y_axis': pred[1] })
     rows = my_cusor.fetchall()
     for r in rows:
-        block.append(r[0])  
+        block.append(r[0])
+
+    if(len(block)<1):
+        select_stmt = "select ref_point from indoor_nav_using_affinity_prop.geo_location_cord order by abs(x_axis - %(x_axis)s) + abs(y_axis - %(y_axis)s) limit 1"
+        my_cusor.execute(select_stmt,{ 'x_axis': pred[0] , 'y_axis': pred[1] })
+        rows = my_cusor.fetchall()
+        for r in rows:
+            block = r[0] 
+
     my_cusor.close()    
     return block    
 
@@ -461,19 +489,32 @@ def get_direction(cur_rp, dest_rp,path, distance_audio):
         print(distance_text)
     return  direction       
 
+def affinity_train(X_train):
+    #X_train = X_train.fillna(0)
+    X_ktrain = X_train.values
+    #print(X_train.head())
+
+    N = X_ktrain.shape[0]
+    affinity = np.zeros((N,N))
+    for i in range(N):
+        affinity[i,:] = bdist(X_ktrain, X_ktrain[i], 5, 1e-3, 1e-25)
+
+    cluster = AffinityPropagation(damping=0.5, affinity='precomputed')
+    labels = cluster.fit_predict(affinity)
+    C = np.unique(labels).size
+    clusters = X_ktrain[cluster.cluster_centers_indices_]
+    return clusters, labels, C
+
 #Get Train Data 
-train = load_kmeans_data(path_to_kmeans_data)
-try1, rss_df, cluster_labels  = get_all_cluster_data(train)
-matrix = try1.values
+train = load_data()
+X_train, y_train  = get_RSS(train)
+X_ktrain = X_train.values
+y_ktrain = y_train.values
+clusters, labels, C = affinity_train(X_train)
 
-#Get Saved Cluster Data 
-clust_ld, cs_temp, ss_temp = load_cluster_centers(path_to_kmeans_data)
-clust = clust_ld.to_numpy()
-cs = cs_temp.to_numpy()
-ss = ss_temp.to_numpy()
 
-init_pred = initial_localization(initial_test_dir, initial_loc_audio, matrix, rss_df, cluster_labels, clust, cs, ss)
-init_block = compute_init_block(init_pred)
+init_pred = initial_localization(initial_test_dir, initial_loc_audio, X_ktrain, y_ktrain, method, clusters, labels)
+init_block = get_absolute_loc_for_nav(init_pred)
 print(init_block)
 if(len(init_block) > 1):
     block_text = 'User is located near block! ' + init_block[0] +' and ' + init_block[1]
@@ -501,7 +542,7 @@ fig = plt.figure()
 
 img = mpimg.imread("D:\\Project\\Dissertation\\floor_plan_samp.png")
 #print(img)
-plt.imshow(img, extent=[36.15,0,-4.90,51.32])
+
 ax=plt.gca()  
 ax.yaxis.tick_right()        
 plt.grid(False)  
@@ -520,14 +561,18 @@ def animate(i):
     data  = load_test_data(test_raw_dir)
     my_data = format_data(data)
     x_test = get_req_test_data(my_data)
-    test_matrix = x_test.values
+    test_mean = x_test.mean(axis = 0).to_frame().transpose()
+    test_matrix_new = test_mean.values
+    test_matrix_new = np.vstack((test_matrix_new, test_mean.values))
+    test_matrix = np.vstack((test_matrix_new, test_mean.values))
+    print(test_matrix)
 
     #Predict Code
-    y, error3D, error2D, fdetect, cused, pred = position_route(method, rss_df,
-            matrix, test_matrix, clust, cluster_labels, N=5, eps=1e-3)
+    y, error3D, error2D, fdetect, cused, pred = position_route(method, X_ktrain,
+            y_ktrain, test_matrix, clusters, labels, N=5, eps=1e-3)
     ref_pred = get_refpoint_from_pos(pred)
-    #pred = knn.predict(test_mean)
-    X = ref_pred[0]
+    print(ref_pred)
+    X = ref_pred
 
     
     new_path, distance = dijsktra(graph, X, dest_rp)
@@ -558,6 +603,7 @@ def animate(i):
     elif(direction == "North"):  
         plt.scatter(xs, ys,marker="v", c=color)  
 ani = animation.FuncAnimation(fig, animate, interval=1000)
+plt.imshow(img, extent=[36.15,0,-4.90,51.32])
 plt.show()
 
 mydb.close()

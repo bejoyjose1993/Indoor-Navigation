@@ -196,8 +196,9 @@ x_test = get_req_test_data(my_data)
 
 matrix = try1.values
 print(matrix)
+print(type(matrix))
 
-n_clusters = 6                                              # number of clusters
+n_clusters = 11                                              # number of clusters
 kmeans = KMeans(n_clusters=n_clusters)   # use kmeans 
 cluster_labels = kmeans.fit_predict(matrix)               # get the labels
 print("cluster_labels")
@@ -212,11 +213,11 @@ print(test_matrix)
 #Saving Cluster Details
 new_cluster_df = train
 new_cluster_df['cluster_labels'] = cluster_labels
-#new_cluster_df.to_csv ("D:\\Project\\Dissertation\\Master\\dump\\new_cluster_df.csv", index = False, header=True)
+new_cluster_df.to_csv ("D:\\Project\\Dissertation\\Master\\master_with_kmean_cluster.csv", index = False, header=True)
 
 #Saving Cluster Centers
 new_cluster = pd.DataFrame(clust)
-#new_cluster.to_csv ("D:\\Project\\Dissertation\\Master\\dump\\new_cluster.csv", index = False, header=True)
+new_cluster.to_csv ("D:\\Project\\Dissertation\\Master\\kmeans_cluster_centers.csv", index = False, header=True)
 
 
 
@@ -249,8 +250,8 @@ for c in range(C):
 cs_temp = pd.DataFrame(cs)
 ss_temp = pd.DataFrame(ss)
 
-#cs_temp.to_csv ("D:\\Project\\Dissertation\\Master\\dump\\cs_temp.csv", index = False)
-#ss_temp.to_csv ("D:\\Project\\Dissertation\\Master\\dump\\ss_temp.csv", index = False)
+cs_temp.to_csv ("D:\\Project\\Dissertation\\Master\\dump\\cs_kmean.csv", index = False)
+ss_temp.to_csv ("D:\\Project\\Dissertation\\Master\\dump\\ss_kmean.csv", index = False)
 
 
 y_test = [0,1,1,1]
@@ -266,7 +267,8 @@ N = 6
 
 
 number=[np.sum(cluster_labels == 0), np.sum(cluster_labels == 1),np.sum(cluster_labels == 2),
-         np.sum(cluster_labels == 3),np.sum(cluster_labels == 4),np.sum(cluster_labels == 5)]
+         np.sum(cluster_labels == 3),np.sum(cluster_labels == 4),np.sum(cluster_labels == 5),np.sum(cluster_labels == 6),
+         np.sum(cluster_labels == 7),np.sum(cluster_labels == 8),np.sum(cluster_labels == 9),np.sum(cluster_labels == 10)]
 
 number.sort()
 
@@ -280,7 +282,7 @@ plt.xlabel('Cluster')                               # set xlabel
 plt.ylabel('Number')                                # set ylabel
 plt.title('K-Means Result')                         # set title
 
-plt.xticks(index, ('cluster-1', 'cluster-2','cluster-3','cluster-4','cluster-5','cluster-6'))       # set the name of each bar
+plt.xticks(index, ('cluster-1', 'cluster-2','cluster-3','cluster-4','cluster-5','cluster-6','cluster-7', 'cluster-8','cluster-9','cluster-10','cluster-11'))       # set the name of each bar
 plt.yticks(np.arange(0, 2000, 100))                   # from 0~35000(50000 for each separate)
 plt.legend(loc="upper right")
-#plt.show()    
+plt.show()    

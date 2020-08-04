@@ -155,7 +155,7 @@ def input_destination():
     mytext = "Enter your destination block"
     text_to_speach(mytext,select_dest)
     dest = input("Enter your destination block:")
-    dest_text = "Your destination is block" + dest
+    dest_text = "Your destination is block " + dest
     text_to_speach(dest_text,input_dest)
     print(dest_text)
     return dest
@@ -167,6 +167,11 @@ def get_graph_edge():
         ('RP-3', 'RP-4', 7.20),
         ('RP-4', 'RP-5', 7.20),
         ('RP-5', 'RP-6', 7.20),
+        ('RP-5', 'RP-7', 7.20),
+        ('RP-7', 'RP-8', 7.20),
+        ('RP-8', 'RP-9', 7.20),
+        ('RP-9', 'RP-10', 7.20),
+        ('RP-10', 'RP-11', 7.20),
     ]
     return edges
 
@@ -328,7 +333,7 @@ for edge in edges:
     graph.add_edge(*edge)
 X, Y , loc= get_nav_ref_points(init_block, dest_block)
 path, distance = dijsktra(graph, X, Y)
-distance_text = 'Your Location is approximately' + str(distance) +'meeters away'
+distance_text = 'Your Location is approximately ' + str(round(distance)) +' meeters away'
 text_to_speach(distance_text,distance_audio)
 #print(distance_text)
  
@@ -337,7 +342,8 @@ fig = plt.figure()
 
 img = mpimg.imread("D:\\Project\\Dissertation\\floor_plan_samp.png")
 print(img)
-plt.imshow(img, extent=[36.15,0,-4.90,51.32])
+#plt.imshow(img, extent=[36.15,0,-4.90,51.32])
+plt.imshow(img, extent=[36.15,0,-5.51,51.32])
 ax=plt.gca()  
 ax.yaxis.tick_right()        
 plt.grid(False)  
@@ -365,7 +371,7 @@ def animate(i):
     Y = get_block_ref_point(dest_block)
     new_path, distance = dijsktra(graph, X, Y)
     direction = get_direction(pred[0][0], dest_block,new_path,distance_audio)
-    distance_text = 'Your Location is ' + str(distance) +'meeters away'
+    distance_text = 'Your Location is approximately ' + str(round(distance)) +' meeters away'
     text_to_speach(distance_text,distance_audio)
     print(distance_text)
 
