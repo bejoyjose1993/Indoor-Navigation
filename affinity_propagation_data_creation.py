@@ -37,16 +37,11 @@ def create_coase_rf():
     for rf in refference_labels:
         for mp in messssurement_points:
             for orp in ori_rp:
-                #print(rf)
-                #print(mp)
-                #print(orp)
                 my_cusor.execute(select_cluster,{'reference_points': rf, 'messurement_points': mp, 'orientation': orp})
                 df = DataFrame(my_cusor.fetchall())
-                #df.columns = field_names
                 field_names = [i[0] for i in my_cusor.description]
                 df.columns = field_names  
                 x_test, x_axis, y_axis, z_axis = get_req_data(df)
-                #print(z_axis)
                 test_mean = x_test.mean(axis = 0).to_frame().transpose()
                 test_mean['x_axis'] = x_axis
                 test_mean['y_axis'] = y_axis
