@@ -57,7 +57,8 @@ class Graph():
 
 def load_data():
     my_cusor = mydb.cursor()
-    select_stmt = "SELECT * FROM indoor_navigation.clustered_ref_point ORDER BY reference_point ASC;"
+    #select_stmt = "SELECT * FROM indoor_navigation.clustered_ref_point ORDER BY reference_point ASC;"
+    select_stmt = "SELECT * FROM indoor_navigation.clustered_ref_point ORDER BY reference_points ASC;"
     my_cusor.execute(select_stmt)
     data = DataFrame(my_cusor.fetchall())
     field_names = [i[0] for i in my_cusor.description]
@@ -71,7 +72,7 @@ def load_test_data(path_to_data):
 
 def get_req_data(data):
     df =  pd.DataFrame(data)
-    df = df[['0x0001','0x0002','0x0003','0x0004','0x0005','0x0006','0x0012','0x0013','0x0014','0x0015','0x0016','reference_point']]
+    df = df[['0x0001','0x0002','0x0003','0x0004','0x0005','0x0006','0x0012','0x0013','0x0014','0x0015','0x0016','reference_points']]
     return df
 
 def get_req_test_data(data):
@@ -163,7 +164,7 @@ def input_destination():
     mytext = "Enter your destination block"
     text_to_speach(mytext,select_dest)
     dest = input("Enter your destination block:")
-    dest_text = "Your destination is block" + dest
+    dest_text = "Your destination is block " + dest
     text_to_speach(dest_text,input_dest)
     print(dest_text)
     return dest
@@ -175,6 +176,11 @@ def get_graph_edge():
         ('RP-3', 'RP-4', 7.20),
         ('RP-4', 'RP-5', 7.20),
         ('RP-5', 'RP-6', 7.20),
+        ('RP-5', 'RP-7', 7.20),
+        ('RP-7', 'RP-8', 7.20),
+        ('RP-8', 'RP-9', 7.20),
+        ('RP-9', 'RP-10', 7.20),
+        ('RP-10', 'RP-11', 7.20),
     ]
     return edges
 
@@ -226,26 +232,18 @@ def dijsktra(graph, initial, end):
     # Reverse path
     path = path[::-1]
     return path, distance
-def get_block_ref_point(block_name):
-    my_cusor = mydb.cursor()
-    Y = []
-    stmt = "SELECT ref_point FROM indoor_navigation.geo_location_cord where block = %(block_name)s"
-    my_cusor.execute(stmt,{ 'block_name': block_name})
-    rows = my_cusor.fetchall()
-    for r in rows:
-        Y =r[0]
-    my_cusor.close()
-    return Y
+
 
 def get_nav_ref_points(cur_block, dest_block):
     my_cusor = mydb.cursor()
     dest_cusor = mydb.cursor()
     X = []
     Y = []
+    loc = []
     if(len(cur_block) > 1):
         block_area = cur_block[0] + " " + cur_block[1]
         select_stmt = "SELECT ref_point FROM indoor_navigation.geo_location_cord where block = %(cur_block1)s or block =  %(cur_block2)s and block_area = %(block_area)s"
-        my_cusor.execute(select_stmt,{ 'cur_block1': cur_block[0], 'cur_block2': cur_block[1], 'block_area' : block_area})
+        my_cusor.execute(select_stmt,{ 'cur_block1': cur_block[0] , 'cur_block2': cur_block[1], 'block_area' : block_area})
     else:
         block_area = cur_block[0]
         select_stmt = "SELECT ref_point FROM indoor_navigation.geo_location_cord where block = %(cur_block1)s and block_area = %(block_area)s"
@@ -258,26 +256,47 @@ def get_nav_ref_points(cur_block, dest_block):
     dest_cusor.execute(dest_stmt,{ 'dest_block': dest_block})
     rows = dest_cusor.fetchall()
     for r in rows:
-        Y =r[0]
+        Y.append(r[0])
+        #loc.append([r[1],r[2]])
+    reff_point = list(dict.fromkeys(Y))
+    index = 0
+    if(len(reff_point)>1):
+        ref_dist = []
+        for r in reff_point:
+            my_path, distance = dijsktra(graph, X, r)
+            ref_dist.append(distance)
+        index = ref_dist.index(min(ref_dist))
+    print(reff_point[index])
+
+    dest_stmt = "SELECT ref_point,x_axis, y_axis FROM indoor_navigation.geo_location_cord where ref_point = %(ref_point)s"
+    dest_cusor.execute(dest_stmt,{ 'ref_point':     reff_point[index]})
+    loc_rows = dest_cusor.fetchall()
+    for r in loc_rows:
+        #Y.append(r[0])
         loc = [r[1],r[2]]
+    print(loc)
     my_cusor.close()
     dest_cusor.close()
-    return (X,Y,loc)
+    return (X,reff_point[index],loc)
 
-def get_direction(cur_rp, dest_block,path, distance_audio):
+def get_direction(cur_rp, dest_rp,path, distance_audio):
     print(path)
+    dest_reached = False
     next_rp = ""
     direction = "Destination"
     if(len(path) > 1):
+        print(path)
+        print("cur_rp")
+        print(cur_rp)
         next_rp = path[path.index(cur_rp)+1]
 
-    dest_cusor = mydb.cursor()
-    dest_stmt = "SELECT ref_point FROM indoor_navigation.geo_location_cord where block = %(dest_block)s"
-    dest_cusor.execute(dest_stmt,{ 'dest_block': dest_block})
-    rows = dest_cusor.fetchall()
-    for r in rows:
-        dest_rp =r[0]
-    dest_cusor.close()
+    #dest_cusor = mydb.cursor()
+    #dest_stmt = "SELECT ref_point FROM indoor_navigation.geo_location_cord where block = %(dest_block)s"
+    #dest_cusor.execute(dest_stmt,{ 'dest_block': dest_block})
+    #rows = dest_cusor.fetchall()
+    #for r in rows:
+    #    dest_rp =r[0]
+    #dest_cusor.close()
 
     print(cur_rp,dest_rp)
 
@@ -285,6 +304,7 @@ def get_direction(cur_rp, dest_block,path, distance_audio):
     if(cur_rp == dest_rp):
         distance_text = 'Your Have Reached Your Destination'
         text_to_speach(distance_text,distance_audio)
+        dest_reached = True
         print(distance_text)
     else:
         my_cusor = mydb.cursor()
@@ -297,8 +317,9 @@ def get_direction(cur_rp, dest_block,path, distance_audio):
         my_cusor.close()
         #distance_text = 'Your Have Reached Your Destination'
         text_to_speach(distance_text,distance_audio)
+        dest_reached = False
         print(distance_text)
-    return  direction       
+    return  direction, dest_reached     
         
 def get_detail_pred_data(pred):
     #field_names = ['0x0001','0x0002','0x0003','0x0004','0x0005','0x0006','0x0012','0x0013','0x0014','0x0015','0x0016','x_axis','y_axis','z_axis','orientation','messurement_points','labels','cluster_labels']
@@ -329,9 +350,9 @@ def get_detail_prediction(data,test_mean):
 data  = load_data()
 df = get_req_data(data)
 # KNN Training
-X_train = df.drop(['reference_point'],axis=1)
+X_train = df.drop(['reference_points'],axis=1)
 X_train = X_train.fillna(0)
-y_train = df[['reference_point']]
+y_train = df[['reference_points']]
 knn = KNeighborsClassifier(n_neighbors=1)
 knn.fit(X_train,y_train)
 KNeighborsClassifier(algorithm='auto', leaf_size=30, metric='minkowski',
@@ -355,9 +376,9 @@ graph = Graph()
 edges = get_graph_edge()
 for edge in edges:
     graph.add_edge(*edge)
-X, Y , loc= get_nav_ref_points(init_block, dest_block)
-path, distance = dijsktra(graph, X, Y)
-distance_text = 'Your Location is approximately' + str(distance) +'meeters away'
+X, dest_rp , loc= get_nav_ref_points(init_block, dest_block)
+path, distance = dijsktra(graph, X, dest_rp)
+distance_text = 'Your Location is approximately ' + str(round(distance)) +' meeters away'
 text_to_speach(distance_text,distance_audio)
 #print(distance_text)
  
@@ -394,10 +415,9 @@ def animate(i):
     print(pred)
     #get_specific
     X = pred[0]
-    Y = get_block_ref_point(dest_block)
-    new_path, distance = dijsktra(graph, X, Y)
-    direction = get_direction(pred[0], dest_block,new_path,distance_audio)
-    distance_text = 'Your Location is approximately' + str(distance) +'meeters away'
+    new_path, distance = dijsktra(graph, X, dest_rp)
+    direction, dest_reached = get_direction(X, dest_rp,new_path,distance_audio)
+    distance_text = 'Your Location is approximately ' + str(round(distance)) +' meeters away'
     text_to_speach(distance_text,distance_audio)
     print(distance_text)
 
@@ -426,6 +446,9 @@ def animate(i):
         plt.scatter(xs, ys,marker="^", c=color)
     elif(direction == "North"):  
         plt.scatter(xs, ys,marker="v", c=color)  
+
+    if dest_reached:
+        #exit()    
 ani = animation.FuncAnimation(fig, animate, interval=1000)
 plt.show()
 
