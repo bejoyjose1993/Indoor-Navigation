@@ -13,12 +13,14 @@ Our testbed has been set up inside an underground basement car park. The car par
 
 
 <h2 id="test_bed_architecture">Reference Point And Measurement Point Architecture</h2>
-The followings shows the selected and calibrated, Refrence and Measurement points used to collect the RF-Fingerprints.
+Planning and positioning of reference points is an essential task in fingerprint database creation. Reference points will be used as a part of the dataset label in the multilabel fingerprint database. Our architecture contains almost 14 reference points placed approximately at a distance of about 7.20 m away from each other, i.e., adjacent reference points RP-1 and RP-2 are placed 7.20 meters apart.The followings shows the selected and calibrated, Refrence and Measurement points used to collect the RF-Fingerprints.
 
 ![Image of Testbed](https://github.com/bejoyjose1993/Indoor-Navigation/blob/master/Images/Reference%20Points-2.png)
-Planning and positioning of reference points is an essential task in fingerprint database creation. Reference points will be used as a part of the dataset label in the multilabel fingerprint database. Our architecture contains almost 14 reference points placed approximately at a distance of about 7.20 m away from each other, i.e., adjacent reference points RP-1 and RP-2 are placed 7.20 meters apart.
+
+
+Each reference point has 5 measurement points, each resembling a cluster labeled P1, P2, P3, P4, and P5. The fingerprint database will be created by recording sensor data from each measurement point. It will become another crucial dataset label, which will help in determining the position of the user. X and Y coordinates are recorded for each measurement point. Measurements are manually taken with the help of 50-meter open reel tape. 
 ![Image of Testbed](https://github.com/bejoyjose1993/Indoor-Navigation/blob/master/Images/Messurement_Points_Data-2.png)
-Each reference point has 5 measurement points, each resembling a cluster labeled P1, P2, P3, P4, and P5.. The fingerprint database will be created by recording sensor data from each measurement point. It will become another crucial dataset label, which will help in determining the position of the user. X and Y coordinates are recorded for each measurement point. Measurements are manually taken with the help of 50-meter open reel tape. 
+
 
 
 <h2 id="test_bed_architecture">Reference Point And Measurement Point Architecture</h2>
