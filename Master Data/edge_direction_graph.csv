@@ -1,0 +1,21 @@
+from_edge,to_edge,distance,direction,direction_comment
+RP-1,RP-2,7.2,South,Go Straight to Southern Direction
+RP-2,RP-3,7.2,South,Go Straight to Southern Direction
+RP-3,RP-4,7.2,South,Go Straight to Southern Direction
+RP-4,RP-5,7.2,South,Go Straight to Southern Direction
+RP-5,RP-6,7.2,South,Go Straight to Southern Direction
+RP-5,RP-7,7.2,North,Go Straight to North-Eastern Direction
+RP-7,RP-8,7.2,North,Go Straight to Northern Direction
+RP-8,RP-9,7.2,North,Go Straight to Northern Direction
+RP-9,RP-10,7.2,North,Go Straight to Northern Direction
+RP-10,RP-11,7.2,North,Go Straight to Northern Direction
+RP-11,RP-10,7.2,South,Go Straight to Southern Direction
+RP-10,RP-9,7.2,South,Go Straight to Southern Direction
+RP-9,RP-8,7.2,South,Go Straight to Southern Direction
+RP-8,RP-7,7.2,South,Go Straight to Southern Direction
+RP-7,RP-5,7.2,South,Go Straight to South-Western Direction
+RP-6,RP-5,7.2,North,Go Straight to Northern Direction
+RP-5,RP-4,7.2,North,Go Straight to Northern Direction
+RP-4,RP-3,7.2,North,Go Straight to Northern Direction
+RP-3,RP-2,7.2,North,Go Straight to Northern Direction
+RP-2,RP-1,7.2,North,Go Straight to Northern Direction
