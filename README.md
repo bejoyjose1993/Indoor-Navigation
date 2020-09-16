@@ -7,6 +7,6 @@ in a very challenging underground car park environment. To achieve our goals a t
 
 
 <h2 id="test_bed_architecture">Testbed And Architecture</h2>
+The Following captures the 3D view of the carpark chosen as the Testbed.
 
-
-![Image of Testbed](https://github.com/bejoyjose1993/Indoor-Navigation/blob/master/Evaluation_Graphs/best_no_nearest_neighbour.png)
+![Image of Testbed](https://github.com/bejoyjose1993/Indoor-Navigation/blob/master/Images/Block_exp-1.png)
