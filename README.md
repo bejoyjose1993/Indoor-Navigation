@@ -10,3 +10,16 @@ in a very challenging underground car park environment. To achieve our goals a t
 The Following captures the 3D view of the carpark chosen as the Testbed.
 
 ![Image of Testbed](https://github.com/bejoyjose1993/Indoor-Navigation/blob/master/Images/Block_exp-1.png)
+
+
+<h2 id="test_bed_architecture">Reference Point And Measurement Point Architecture</h2>
+The followings shows the selected and calibrated, Refrence and Measurement points used to collect the RF-Fingerprints.
+
+![Image of Testbed](https://github.com/bejoyjose1993/Indoor-Navigation/blob/master/Images/Reference%20Points-2.png)
+![Image of Testbed](https://github.com/bejoyjose1993/Indoor-Navigation/blob/master/Images/Messurement_Points_Data-2.png)
+
+
+<h2 id="test_bed_architecture">Reference Point And Measurement Point Architecture</h2>
+Below Image gives an overview of Sensor Placements Accross the Testbed.
+
+![Image of Testbed](https://github.com/bejoyjose1993/Indoor-Navigation/blob/master/Images/Sensor_location_ID.png)
