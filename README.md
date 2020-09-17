@@ -68,10 +68,10 @@ This file present in "Code Base/1 Data Preprocessing and Visualization" was used
 ### Testcase Descriptions
  To analyze the effect of the environment on the model prediction, we have created various test scenarios. These test scenarios include test data collected from the testbed at various instances with different vehicle intensity levels.
 Multiple scenarios have been created as follows, 
-•	Scenario 1: Base scenarios as, using the original dataset by dividing it into train and test dataset.
-•	Scenario 2: Test data as fingerprints collected when 14 vehicles were present in the dataset.
-•	Scenario 3: Test data as fingerprints collected when testbed had vehicle intensity as 23. 
-•	Scenario 4: In our fourth scenario, we use a combination of 21 vehicle and original dataset to train models and use the 13 vehicle data to test the results.  
+*	Scenario 1: Base scenarios as, using the original dataset by dividing it into train and test dataset.
+* Scenario 2: Test data as fingerprints collected when 14 vehicles were present in the dataset.
+*	Scenario 3: Test data as fingerprints collected when testbed had vehicle intensity as 23. 
+*	Scenario 4: In our fourth scenario, we use a combination of 21 vehicle and original dataset to train models and use the 13 vehicle data to test the results.  
 The different scenarios are taken to study various problems in RSSI based navigation.
 
 We use the scenarios mentioned above and datasets to compute the performance of multiple models. We use distance-based models as evaluation models as RSSI localization is based on distance. Models such as K-Nearest Neighbour, K-Means, Stare Vector Machine, Logistic Regression, and Affinity propagation were studied and analyzed.
