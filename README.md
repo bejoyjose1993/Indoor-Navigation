@@ -30,26 +30,31 @@ Cypress BLE-Beacon is the sensor used in the testbed. 11 Beacons are set up alon
 
 <h2 id="test_bed_architecture">RF Fingerprinf Collection</h2>
 Sensor data is collected from each meaurement point using Cypres Ble Beacon application. Data of all four directions are collected i.e. East, West, North and South for enriching the dataset. RSSI values are then extracted, data is preprocessed and Finger database is created. 
-## extractingFingerprint.py 
+
+## Code Description
+### extractingFingerprint.py 
 The above python file in the "Code Base/1 Data Preprocessing and Visualization" is used to extract the RSSI value and preprocess the dataset.
 
-## combineMasterData.py  
+### combineMasterData.py  
 The above file in the "Code Base/1 Data Preprocessing and Visualization" is used to combine all individual measurement point specific datset into single Master dataset.
 
-## affinity_propagation_data_creation.py, coarse_rf_creation.py and kmeans_with_my_data.py 
+### affinity_propagation_data_creation.py, coarse_rf_creation.py and kmeans_with_my_data.py 
 These file are used to further preproces the dataset to make it suitable for affinity propagation, coarse localization and Kmeans models. In this cluster are created and cluster
 details are stored along with master data in CSV files."Code Base/1 Data Preprocessing and Visualization" contains these files.
 
-## import_csv_to_db.py  and database_entry.py 
+### import_csv_to_db.py  and database_entry.py 
 These file are used to store the created CSV files into respective databases."Code Base/1 Data Preprocessing and Visualization" contains these files.
 
-## Kmeans_with_saved_clusters.py  
+### Kmeans_with_saved_clusters.py  
 This file was initial used to check the useability of the master data containing the cluster informations. "Code Base/1 Data Preprocessing and Visualization" contains these files.
 
 
 <h2 id="test_bed_architecture">Data Visualization And Quality Analysis</h2>
-
-## visualizeMasterData.py  
+## Code Description
+### visualizeMasterData.py  
 This file present in "Code Base/1 Data Preprocessing and Visualization" was used to visualize the quality of collected master data.
+Below Images shows the 3D scatter plot generated during visualization. It is evident from Figures that signal strength of access points 1 and 4 is maximum around their corresponding blocks.
 
+![Image of Testbed] (https://github.com/bejoyjose1993/Indoor-Navigation/blob/master/Images/AP-1_Signal_Strength.png)
+![Image of Testbed](https://github.com/bejoyjose1993/Indoor-Navigation/blob/master/Images/AP-4_Signal_Strength.png)
 
