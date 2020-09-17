@@ -118,18 +118,18 @@ Thus, by integrating all the individual modules, the application is designed to 
 ### corase_KNN_navigation.py, kmeans_rssi_navigation.py, knn_navigation.py, rssi_navigation_with_affinity_prop.py 
 Finally we have successfully navigated using 4 differnt models. Thought Affinity Propagation was superior than other models, Hence chosen as our final model. The above files have the final navigation apllication codes. "Code Base/5 Navigation Models/" contains these files.
 
-<h2 id="test_bed_architecture">Application Demo Folder</h2>
+<h2 id="test_bed_architecture">3 Application Demo Folder</h2>
 Application Demo folder has the video demo of the application.
 
-<h2 id="test_bed_architecture">Database-Dump Folder</h2>
+<h2 id="test_bed_architecture">4 Database-Dump Folder</h2>
 Database-Dump folder has the msql dump file used for our application.
 
-<h2 id="test_bed_architecture">Datasets Folder</h2>
+<h2 id="test_bed_architecture">5 Datasets Folder</h2>
 Datasets folder has both collected and formated dataset divided on the basis of refrence points, meassurement points and orinetations.
 
-<h2 id="test_bed_architecture">Master Data Folder</h2>
+<h2 id="test_bed_architecture">6 Master Data Folder</h2>
 Master Data folder contains multiple Master CSV files which was later stored in DB.
 
-<h2 id="test_bed_architecture">Evaluation_Graphs Folder</h2>
+<h2 id="test_bed_architecture">7 Evaluation_Graphs Folder</h2>
 Evaluation_Graphs folder contains various graphs and observations obtained during the study.
 
