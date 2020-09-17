@@ -88,4 +88,5 @@ After carefull analysis we selected Affinity Propagation as our final model. The
 
 <h2 id="test_bed_architecture">2.2 Audio Visual Module</h2>
 The basis of visual module is a floor map of the location to be traversed. We use the MagicPlan app during the fieldwork phase to develop the floor map. The App requires manually capturing the corners of the testbed and then creating a 3D and 2D floor maps of the testbed. We have used a 2D floor map to navigate on the testbed. The floor map is then combined and aligned with the matplotlib graph structure and used to plot the user’s current location. User’s current location is designed to continually change color to distinguish from other points in the graph. We have tried to capture the direction of travel using directed triangles and destination is captured with a red circle. The purpose of this module is to visually locate and guide the user to the required destination. Visual module combined with the audio module becomes an effective means of navigation around the testbed.
+
 ![Image of Testbed](https://github.com/bejoyjose1993/Indoor-Navigation/blob/master/Images/Nav_using_corase_KNN.png)
