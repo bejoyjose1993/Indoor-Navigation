@@ -50,11 +50,14 @@ This file was initial used to check the useability of the master data containing
 
 
 <h2 id="test_bed_architecture">Data Visualization And Quality Analysis</h2>
+
+Below Images shows the 3D scatter plot generated during visualization. It is evident from Figures that signal strength of access points 1 and 4 is maximum around their corresponding blocks.
+
+![Image of Testbed](https://github.com/bejoyjose1993/Indoor-Navigation/blob/master/Images/AP-1_Signal_Strength.png)
+![Image of Testbed](https://github.com/bejoyjose1993/Indoor-Navigation/blob/master/Images/AP-4_Signal_Strength.png)
+
+
 ## Code Description
 ### visualizeMasterData.py  
 This file present in "Code Base/1 Data Preprocessing and Visualization" was used to visualize the quality of collected master data.
-Below Images shows the 3D scatter plot generated during visualization. It is evident from Figures that signal strength of access points 1 and 4 is maximum around their corresponding blocks.
-
-![Image of Testbed] (https://github.com/bejoyjose1993/Indoor-Navigation/blob/master/Images/AP-1_Signal_Strength.png)
-![Image of Testbed](https://github.com/bejoyjose1993/Indoor-Navigation/blob/master/Images/AP-4_Signal_Strength.png)
 
