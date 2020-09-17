@@ -6,13 +6,13 @@ in a very challenging underground car park environment. To achieve our goals a t
 
 
 
-<h2 id="test_bed_architecture">Testbed And Architecture (Online Phase)</h2>
+<h2 id="test_bed_architecture">1.1 Testbed And Architecture (Online Phase)</h2>
 Our testbed has been set up inside an underground basement car park. The car park consisted of 46 parking slots, out of which 2 are disabled parking spaces. It consists of a single entrance and exit gate and has two building entrances. The entire parking area can be subdivided into 17 alphabetic blocks. Apart from blocks F, G, J, and Q, all other 13 blocks contain three parking slots each. F and J consist of 2 slots, whereas G and Q contain 1. G1 and K1 are reserved disabled parking slots. The block and slot naming are created such that users can locate and perform seamless navigation inside the testbed. The Following captures the 3D view of the carpark chosen as the Testbed.
 
 ![Image of Testbed](https://github.com/bejoyjose1993/Indoor-Navigation/blob/master/Images/Block_exp-1.png)
 
 
-<h2 id="test_bed_architecture">Reference Point And Measurement Point Architecture (Online Phase)</h2>
+<h2 id="test_bed_architecture">1.2 Reference Point And Measurement Point Architecture (Online Phase)</h2>
 Planning and positioning of reference points is an essential task in fingerprint database creation. Reference points will be used as a part of the dataset label in the multilabel fingerprint database. Our architecture contains almost 14 reference points placed approximately at a distance of about 7.20 m away from each other, i.e., adjacent reference points RP-1 and RP-2 are placed 7.20 meters apart.The followings shows the selected and calibrated, Refrence and Measurement points used to collect the RF-Fingerprints.
 
 ![Image of Testbed](https://github.com/bejoyjose1993/Indoor-Navigation/blob/master/Images/Reference%20Points-2.png)
@@ -23,12 +23,12 @@ Each reference point has 5 measurement points, each resembling a cluster labeled
 
 
 
-<h2 id="test_bed_architecture">Sensor Placement and Architecture (Online Phase)</h2>
+<h2 id="test_bed_architecture">1.3 Sensor Placement and Architecture (Online Phase)</h2>
 Cypress BLE-Beacon is the sensor used in the testbed. 11 Beacons are set up along the navigation path. The below figure shows the placement of BLE beacons along with their Beacon Ids. Beacons are placed in such a way that signals from at least two beacons are received at every measurement and reference points. The Beacons are kept on the ceiling light upside down such that the lights consistently charge its photosensors, and it can seamlessly transmit with full power.
 
 ![Image of Testbed](https://github.com/bejoyjose1993/Indoor-Navigation/blob/master/Images/Sensor_location_ID.png)
 
-<h2 id="test_bed_architecture">RF Fingerprinf Collection (Online Phase)</h2>
+<h2 id="test_bed_architecture">1.4 RF Fingerprinf Collection (Online Phase)</h2>
 Sensor data is collected from each meaurement point using Cypres Ble Beacon application. Data of all four directions are collected i.e. East, West, North and South for enriching the dataset. RSSI values are then extracted, data is preprocessed and Finger database is created. 
 
 ## Code Description
@@ -49,7 +49,7 @@ These file are used to store the created CSV files into respective databases."Co
 This file was initial used to check the useability of the master data containing the cluster informations. "Code Base/1 Data Preprocessing and Visualization" contains these files.
 
 
-<h2 id="test_bed_architecture">Data Visualization And Quality Analysis (Online Phase)</h2>
+<h2 id="test_bed_architecture">1.5 Data Visualization And Quality Analysis (Online Phase)</h2>
 
 Below Images shows the 3D scatter plot generated during visualization. It is evident from Figures that signal strength of access points 1 and 4 is maximum around their corresponding blocks.
 
@@ -63,7 +63,7 @@ This file present in "Code Base/1 Data Preprocessing and Visualization" was used
 
 
 
-<h2 id="test_bed_architecture">Module Evaluation (Online Phase)</h2>
+<h2 id="test_bed_architecture">1.6 Module Evaluation (Online Phase)</h2>
 
 ### Testcase Descriptions
  To analyze the effect of the environment on the model prediction, we have created various test scenarios. These test scenarios include test data collected from the testbed at various instances with different vehicle intensity levels.
@@ -76,4 +76,11 @@ The different scenarios are taken to study various problems in RSSI based naviga
 
 We use the scenarios mentioned above and datasets to compute the performance of multiple models. We use distance-based models as evaluation models as RSSI localization is based on distance. Models such as K-Nearest Neighbour, K-Means, Stare Vector Machine, Logistic Regression, and Affinity propagation were studied and analyzed.
 
+## Code Description
+### evaluaing_logistic_regression.py, evaluating_svm_learn_model.py, evaulating_affinity_propagation.py, evaulating_coarse_knn.py evaulating_simple_knn.py and knn_learning.py
+Above source code files present in "Code Base/2 Model Evaluation/" is used to evaluate performance of RSSI based preiction using different Machine learning models.
+Accuracy, Precision Recall and Prediction Errors are calculated to find the best Model.
+After carefull analysis we selected Affinity Propagation as our final model. The following figures shows the position error of the final selected model.
+![Image of Testbed](https://github.com/bejoyjose1993/Indoor-Navigation/blob/master/Images/positioning_error_for_xaxis.png)
+![Image of Testbed](https://github.com/bejoyjose1993/Indoor-Navigation/blob/master/Images/y_axis_Scenario_1.png)
 
