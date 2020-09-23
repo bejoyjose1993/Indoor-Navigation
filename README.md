@@ -63,7 +63,7 @@ This file present in "Code Base/1 Data Preprocessing and Visualization" was used
 
 
 
-<h2 id="test_bed_architecture">1.6 Module Evaluation (Online Phase)</h2>
+<h2 id="test_bed_architecture">2.1 Module Evaluation (Offline Phase)</h2>
 
 ### Testcase Descriptions
  To analyze the effect of the environment on the model prediction, we have created various test scenarios. These test scenarios include test data collected from the testbed at various instances with different vehicle intensity levels.
@@ -83,4 +83,53 @@ Accuracy, Precision Recall and Prediction Errors are calculated to find the best
 After carefull analysis we selected Affinity Propagation as our final model. The following figures shows the position error of the final selected model.
 ![Image of Testbed](https://github.com/bejoyjose1993/Indoor-Navigation/blob/master/Images/positioning_error_for_xaxis.png)
 ![Image of Testbed](https://github.com/bejoyjose1993/Indoor-Navigation/blob/master/Images/y_axis_Scenario_1.png)
+
+
+
+<h2 id="test_bed_architecture">2.2 Audio Visual Module (Offline Phase)</h2>
+The basis of visual module is a floor map of the location to be traversed. We use the MagicPlan app during the fieldwork phase to develop the floor map. The App requires manually capturing the corners of the testbed and then creating a 3D and 2D floor maps of the testbed. We have used a 2D floor map to navigate on the testbed. The floor map is then combined and aligned with the matplotlib graph structure and used to plot the user’s current location. User’s current location is designed to continually change color to distinguish from other points in the graph. We have tried to capture the direction of travel using directed triangles and destination is captured with a red circle. The purpose of this module is to visually locate and guide the user to the required destination. Visual module combined with the audio module becomes an effective means of navigation around the testbed.
+
+![Image of Testbed](https://github.com/bejoyjose1993/Indoor-Navigation/blob/master/Images/Nav_using_corase_KNN.png)
+
+## Code Description
+### math_plot_image.py, ploting_obj.py, reading_the_latest_file.py 
+The above python files in the "Code Base/3 Visual Module/" were used to create Visual Floormap module.
+
+### Playing_Audio_Files.py, Text_to_speach.py, Text_to_speach_new.py 
+The above python files in the "Code Base/4 Audio Module/" were used to create Audio guiding module.
+
+
+<h2 id="test_bed_architecture">2.3 Application Workflow (Offline Phase)</h2>
+
+Here we will discuss step by step functioning of our user application. The online phase's generated fingerprints are stored in the database as two separate tables, ‘master_data’ and aggregated ‘affinity_prop_master’ with 16,824 and 220 data, respectively. This data acts as a base for the offline application phase. The following step describes the application workflow.
+*Step 1: The user collects the current RSSI data from the current location using the Cypress BLE beacon app and stores it in a CSV file.
+*Step 2: The application initially trains the selected model with an aggregated ‘affinity_prop_master’ dataset.  This is the Coarse localization stage.
+*Step 3: The user’s current location is predicted using the current RSSI readings using the model. This becomes the source node.
+*Step 4: The user is prompted to enter the destination location. This is considered as the destination node.
+*Step 5: Dijkstra’s pathfinding algorithm is used to compute the shortest path and calculate the distance from the source to the destination node. 
+*Step 6: The selected model is then trained with the cluster member present in the ‘master_data’ dataset for the current Reference Point.
+*Step 7: The user’s actual location is predicted, and the geo-coordinate for the user is computed. This constitutes the Fine localization stage.
+*Step 8: Audio-Visual module is then used to locate the user, find the destination, and guide the user to the desired location.
+*Step 9: The user traverses forward towards the prompted location and tries to collect the new RSSI readings.
+*Step 10: If the current location matches the destination location, then “Destination Reached” else “Go to Step: 3”.
+Thus, by integrating all the individual modules, the application is designed to allow users to navigate the indoor environment freely.
+
+## Code Description
+### corase_KNN_navigation.py, kmeans_rssi_navigation.py, knn_navigation.py, rssi_navigation_with_affinity_prop.py 
+Finally we have successfully navigated using 4 differnt models. Thought Affinity Propagation was superior than other models, Hence chosen as our final model. The above files have the final navigation apllication codes. "Code Base/5 Navigation Models/" contains these files.
+
+<h2 id="test_bed_architecture">3 Application Demo Folder</h2>
+Application Demo folder has the video demo of the application.
+
+<h2 id="test_bed_architecture">4 Database-Dump Folder</h2>
+Database-Dump folder has the msql dump file used for our application.
+
+<h2 id="test_bed_architecture">5 Datasets Folder</h2>
+Datasets folder has both collected and formated dataset divided on the basis of refrence points, meassurement points and orinetations.
+
+<h2 id="test_bed_architecture">6 Master Data Folder</h2>
+Master Data folder contains multiple Master CSV files which was later stored in DB.
+
+<h2 id="test_bed_architecture">7 Evaluation_Graphs Folder</h2>
+Evaluation_Graphs folder contains various graphs and observations obtained during the study.
 
